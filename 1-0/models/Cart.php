@@ -25,6 +25,7 @@ class Cart extends _Model {
 		, 'allow_seperated_package'
 		, 'date_add'
 		, 'date_upd'
+		, 'paypal_token'
 	);
 	
 	// 3/1/2013

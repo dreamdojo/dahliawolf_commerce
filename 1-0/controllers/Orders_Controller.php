@@ -10,6 +10,7 @@ class Orders_Controller extends _Controller {
 		$this->load('Order_Payment');
 		$this->load('Order_Detail');
 		$this->load('Order_Detail_Tax');
+		$this->load('Payment_Method', ADMIN_API_HOST, ADMIN_API_USER, ADMIN_API_PASSWORD, ADMIN_API_DATABASE);
 		
 		$data = array();
 		
@@ -102,7 +103,29 @@ class Orders_Controller extends _Controller {
 			->add_validation('is_set')
 			->add_validation('is_int');
 		
-		$cc_payment = ($validate_params['payment_info']['payment_method_id'] == '1') ? true : false;
+		$cc_payment = false;
+		$paypal_payment = false;
+		if (!empty($validate_params['payment_info']) && !empty($validate_params['payment_info']['payment_method_id'])) {
+			// Payment method
+			$pm = $this->Payment_Method->get_row(
+				array(
+					'payment_method_id' => $validate_params['payment_info']['payment_method_id']
+					, 'active' => '1'
+				)
+			);
+			
+			if (empty($pm)) {
+				_Model::$Exception_Helper->request_failed_exception('Payment method not found.');		
+			}
+			
+			if ($pm['name'] == 'Credit Card') {
+				$cc_payment = true;
+			}
+			else if ($pm['name'] == 'PayPal') {
+				$paypal_payment = true;
+			}
+		}
+		
 		if ($cc_payment) { // CC validations
 			$this->Validate->add('cc_name', 'Name on Card', $validate_params['payment_info']['cc_name'])
 				->add_validation('is_set');
@@ -118,9 +141,7 @@ class Orders_Controller extends _Controller {
 				->add_validation('is_set')
 				->add_validation('is_int');
 		}
-		else { // PayPal validations
-		}
-		
+				
 		$this->Validate->add_many($input_validations, $validate_params, true);
 		$this->Validate->run();
 		
@@ -160,7 +181,7 @@ class Orders_Controller extends _Controller {
 		}
 		// User may have updated cart in other tab 
 		else if ($params['payment_info']['amount'] != $cart['cart']['totals']['grand_total']) {
-			_Model::$Exception_Helper->request_failed_exception('Cart is empty.');
+			_Model::$Exception_Helper->request_failed_exception('Cart total does not match payment total.');
 		}
 		else if (empty($cart['cart']['carrier'])) {
 			_Model::$Exception_Helper->request_failed_exception('Invalid Carrier.');
@@ -205,8 +226,39 @@ class Orders_Controller extends _Controller {
 			}
 			
 		}
-		else { // Process Paypal
+		else if ($paypal_payment) { // Process Paypal
+			if (empty($cart['cart']['paypal_token'])) {
+				_Model::$Exception_Helper->request_failed_exception('PayPal token is not set.');
+			}
+		
 			$payment_success = true;
+			$calls = array(
+				'complete_paypal_purchase' => array(
+					'amount' => $cart['cart']['totals']['grand_total']
+					, 'token' => $cart['cart']['paypal_token']
+				)
+			);
+			
+			$API = new API(API_KEY_DEVELOPER, PRIVATE_KEY_DEVELOPER);
+			$result = $API->rest_api_request('payment', $calls);
+			$result_decoded = json_decode($result, true);
+			
+			$api_errors = api_errors_to_array($result_decoded);
+	
+			if (!empty($api_errors)) {
+				// make user reauthorize amount
+				$this->Cart->save(
+					array(
+						'id_cart' => $cart['cart']['id_cart']
+						, 'paypal_token' => NULL
+					)
+				);
+				
+				return static::wrap_result(false, NULL, _Model::$Status_Code->get_status_code_request_failed(), $api_errors);
+			}
+			
+			$payment_success = true;
+			$transaction_id = $result_decoded['data']['complete_paypal_purchase']['data']['payment_details']['PAYMENTINFO_0_TRANSACTIONID'];
 		}
 		
 		if (!$payment_success) {
@@ -294,11 +346,13 @@ class Orders_Controller extends _Controller {
 		// Order products
 		if (!empty($cart['products'])) {
 			foreach ($cart['products'] as $order_product) {
+				$product_price = ($order_product['product_info']['on_sale'] == '1') ? $order_product['product_info']['sale_price'] : $order_product['product_info']['price'];
+				
 				$unit_tax = !empty($order_product['tax_info']) && is_numeric($order_product['tax_info']) ? $order_product['tax_info']['unit_amount'] : 0;
-				$unit_price_tax_excl = $order_product['product_info']['price'];
+				$unit_price_tax_excl = $product_price;
 				$unit_price_tax_incl = $unit_price_tax_excl + $unit_tax;
 				$total_product_tax = !empty($order_product['tax_info']) && is_numeric($order_product['tax_info']) ? $order_product['tax_info']['total_amount'] : 0;
-				$total_price_tax_excl = ($order_product['product_info']['price'] * $order_product['quantity']);
+				$total_price_tax_excl = ($product_price * $order_product['quantity']);
 				$total_price_tax_incl = $total_price_tax_excl + $total_product_tax;
 				$order_detail_data = array(
 					'id_order' => $data['id_order']
@@ -308,7 +362,7 @@ class Orders_Controller extends _Controller {
 					, 'product_attribute_id' => $order_product['id_product_attribute']
 					, 'product_name' => $order_product['product_info']['product_name']
 					, 'product_quantity' => $order_product['quantity']
-					, 'product_price' => $order_product['product_info']['price']
+					, 'product_price' => ($order_product['product_info']['on_sale'] == '1') ? $order_product['product_info']['sale_price'] : $order_product['product_info']['price']
 					, 'product_ean13' => $order_product['product_info']['ean13']
 					, 'product_upc' => $order_product['product_info']['upc']
 					, 'product_reference' => $order_product['product_info']['reference']
@@ -322,7 +376,7 @@ class Orders_Controller extends _Controller {
 					, 'unit_price_tax_excl' => $unit_price_tax_excl
 					, 'total_shipping_price_tax_incl' => 0
 					, 'total_shipping_price_tax_excl' => 0
-					, 'original_product_price' => $order_product['product_info']['price']
+					, 'original_product_price' => ($order_product['product_info']['on_sale'] == '1') ? $order_product['product_info']['sale_price'] : $order_product['product_info']['price']
 				);
 				
 				$id_order_detail = $this->Order_Detail->save($order_detail_data);
