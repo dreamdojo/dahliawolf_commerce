@@ -1,4 +1,7 @@
 <?
+
+require DR . '/includes/php/functions-api.php';
+
 class Cart_Controller extends _Controller {
 
 	public function get_cart_from_cookie($params = array()) {
