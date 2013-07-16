@@ -53,7 +53,26 @@ class Wishlist extends _Model {
 	
 	public function get_wishlist($id_shop, $id_lang, $id_customer) {
 		$sql = '
-		SELECT favorite_product.id_favorite_product, product.*, product_lang.name AS product_lang_name, product_lang.name AS product_name, shop.name AS shop_name, lang.name AS lang_name, supplier.name AS supplier, manufacturer.name AS manufacturer, default_shop.name AS default_shop_name, tax_rules_group.name AS tax_rules_group, product_lang.description, product_lang.description_short, product_lang.meta_description, product_lang.meta_keywords, product_lang.meta_title, customer.username, (SELECT product_file.product_file_id FROM product_file WHERE product_file.product_id = product.id_product ORDER BY product_file.product_file_id ASC LIMIT 1) AS product_file_id, IF(EXISTS(SELECT category_product.id_category_product FROM category_product WHERE category_product.id_category = 1 AND category_product.id_product = product.id_product), 1, 0) AS is_new
+		SELECT favorite_product.id_favorite_product, 
+         product.*,
+         product_lang.name AS product_lang_name,
+         product_lang.name AS product_name,
+         shop.name AS shop_name,
+         lang.name AS lang_name,
+         supplier.name AS supplier,
+         manufacturer.name AS manufacturer,
+         default_shop.name AS default_shop_name,
+         tax_rules_group.name AS tax_rules_group,
+         product_lang.description,
+         product_lang.description_short,
+         product_lang.meta_description,
+         product_lang.meta_keywords,
+         product_lang.meta_title,
+         customer.username,
+         (SELECT product_file.product_file_id FROM product_file WHERE product_file.product_id = product.id_product ORDER BY product_file.product_file_id ASC LIMIT 1) AS product_file_id,
+         IF(EXISTS(SELECT category_product.id_category_product FROM category_product WHERE category_product.id_category = 1 AND category_product.id_product = product.id_product),
+         1,
+         0) AS is_new
 		FROM product 
 			INNER JOIN product_shop ON product.id_product = product_shop.id_product
 			INNER JOIN shop ON product_shop.id_shop = shop.id_shop
