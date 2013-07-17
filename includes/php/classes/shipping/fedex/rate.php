@@ -31,6 +31,8 @@ class FedexRate
         $path_to_wsdl = $_SERVER['DOCUMENT_ROOT'] . "/lib/php/fedex/RateService_v10.wsdl";
         ini_set("soap.wsdl_cache_enabled", "0");
 
+        if(floatval($this->weight) < .5) $this->weight = 1;
+
         /** @var SoapClient $client */
         $client = new SoapClient($path_to_wsdl, array('trace' => 1));
         $request['WebAuthenticationDetail'] = array('UserCredential' =>
