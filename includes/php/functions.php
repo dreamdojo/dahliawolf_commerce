@@ -73,9 +73,10 @@ function get_request_methods() {
 function log_error($msg, $error_type) {
 	
 	$log_files = array(
-		'user' => 'error_log_user'
-		, 'database' => 'error_log_database'
-		, 'system' => 'error_log_system'
+		'user'      => 'error_log_user',
+		'database'  => 'error_log_database',
+		'system'    => 'error_log_system',
+        'shipping'  => 'shipping_log',
 	);
 	
 	if (empty($log_files[$error_type])) {
