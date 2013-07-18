@@ -13,19 +13,17 @@ class Carrier extends _Model {
 				, carrier.id_tax_rules_group
 			FROM carrier_zone
 				INNER JOIN carrier_shop ON carrier_zone.id_carrier = carrier_shop.id_carrier
-				INNER JOIN carrier_lang ON carrier_zone.id_carrier = carrier_lang.id_carrier
 				INNER JOIN carrier ON carrier_zone.id_carrier = carrier.id_carrier
 				INNER JOIN ' . $range_table . ' ON carrier_zone.id_carrier = ' . $range_table . '.id_carrier
 				INNER JOIN delivery ON (delivery.id_shop = carrier_shop.id_shop AND delivery.id_carrier = carrier.id_carrier AND ' . $range_table . '.id_' . $range_table . ' = delivery.id_' . $range_table . ' AND delivery.id_zone = carrier_zone.id_zone)
 			WHERE carrier_zone.id_zone = :id_zone
 				AND carrier_shop.id_shop = :id_shop
-				AND carrier_lang.id_lang = :id_lang
 				AND carrier.deleted = :deleted
 				AND carrier.active = :active
 				AND ' . $range_table . '.delimiter1 <= :value
 				AND ' . $range_table . '.delimiter2 >= :value
-				AND delivery.active = 1
-			ORDER BY delivery.price ASC, carrier.name ASC, delivery.name ASC
+				AND delivery.active = :active
+			ORDER BY delivery.price ASC, carrier.position ASC, carrier.name ASC, delivery.name ASC
 		';
 
 		return $sql;
@@ -38,7 +36,6 @@ class Carrier extends _Model {
 		$params = array(
 			':id_zone' => $id_zone
 			, ':id_shop' => $id_shop
-			, ':id_lang' => $id_lang
 			, ':deleted' => '0'
 			, ':active' => '1'
 			, ':value' => $total_price
@@ -60,7 +57,6 @@ class Carrier extends _Model {
 		$params = array(
 			':id_zone' => $id_zone
 			, ':id_shop' => $id_shop
-			, ':id_lang' => $id_lang
 			, ':deleted' => '0'
 			, ':active' => '1'
 			, ':value' => $total_weight

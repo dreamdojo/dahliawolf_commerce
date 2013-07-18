@@ -117,7 +117,7 @@ class Carrier_Controller extends _Controller {
 		$this->load('Country');
 		$this->load('Tax_Rule');
 		$this->load('Shop');
-		$this->load('Config');
+		$this->load('Config', ADMIN_API_HOST, ADMIN_API_USER, ADMIN_API_PASSWORD, ADMIN_API_DATABASE);
 
 		$data = array();
 
@@ -238,7 +238,7 @@ class Carrier_Controller extends _Controller {
 			$live_rate_options = array();
 
 			// Shipping configs
-			$shipping_configs = $this->Config->get_configs_by_section('Shipping');
+			$shipping_configs = $this->Config->get_configs_by_section('Shipping APIs');
 
 			// Get shop store address
 			$shop_address = $this->Shop->get_primary_shop_store_address($params['id_shop']);
@@ -340,14 +340,24 @@ class Carrier_Controller extends _Controller {
 		}
 //echo '<pre>';print_r($live_rate_options);die();
 
-		usort($carriers, array($this, 'cmp_by_price'));
+		//usort($carriers, array($this, 'cmp_by_price'));
+		$this->array_sort_by_column($carriers, 'price');
 		$data = $carriers;
 		//echo '<pre>';print_r($data);die();
 
 		return static::wrap_result(true, $data);
 	}
 	private function cmp_by_price($a, $b) {
-		return $a['price'] - $b['price'];
+		return ($a['price'] + 0) - ($b['price'] + 0);
+	}
+
+	private function array_sort_by_column(&$arr, $col, $dir = SORT_ASC) {
+	    $sort_col = array();
+	    foreach ($arr as $key=> $row) {
+	        $sort_col[$key] = $row[$col];
+	    }
+
+	    array_multisort($sort_col, $dir, $arr);
 	}
 }
 
