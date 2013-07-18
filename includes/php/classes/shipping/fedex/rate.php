@@ -1,15 +1,7 @@
 <?php
 //require_once $_SERVER['DOCUMENT_ROOT'] . '/classes/log/error.php';
 class FedexRate
-    {
-    public function __construct($accessKey, $password, $accountNumber, $meterNumber, $useTestServer)
-        {
-        $this->access_key = $accessKey;
-        $this->password = $password;
-        $this->account_number = $accountNumber;
-        $this->meter_number = $meterNumber;
-        $this->use_test_server = $useTestServer;
-        }
+{
     private $access_key;
     private $password;
     private $account_number;
@@ -23,11 +15,25 @@ class FedexRate
     private $width;
     private $length;
     private $height;
+
+    public function __construct($accessKey, $password, $accountNumber, $meterNumber, $useTestServer)
+    {
+        $this->access_key = $accessKey;
+        $this->password = $password;
+        $this->account_number = $accountNumber;
+        $this->meter_number = $meterNumber;
+        $this->use_test_server = $useTestServer;
+    }
+
     private function callService()
-        {
+    {
         require_once $_SERVER['DOCUMENT_ROOT'] . "/lib/php/fedex/fedex-common.php";
         $path_to_wsdl = $_SERVER['DOCUMENT_ROOT'] . "/lib/php/fedex/RateService_v10.wsdl";
         ini_set("soap.wsdl_cache_enabled", "0");
+
+        if(floatval($this->weight) < .5) $this->weight = 1;
+
+        /** @var SoapClient $client */
         $client = new SoapClient($path_to_wsdl, array('trace' => 1));
         $request['WebAuthenticationDetail'] = array('UserCredential' =>
                                               array('Key' => $this->access_key, 'Password' => $this->password));
@@ -62,22 +68,28 @@ class FedexRate
             )
         );
         //$client->__setLocation($this->server_uri);
-        $response = $client ->getRates($request);
+        $response = $client->getRates($request);
 
 		// Return relevant data
 		$shipping_options = array();
-		foreach ($response->RateReplyDetails as $option) {
-			$shipping_option = array(
-				'service' => $option->ServiceType
-				, 'rate' => $option->RatedShipmentDetails[0]->ShipmentRateDetail->TotalNetCharge->Amount
-			);
+		if(is_array($response->RateReplyDetails)) {
+            foreach ($response->RateReplyDetails as $option)
+            {
+                $shipping_option = array(
+                    'service' => $option->ServiceType
+                    , 'rate' => $option->RatedShipmentDetails[0]->ShipmentRateDetail->TotalNetCharge->Amount
+                );
 
-			if (!empty($this->service) && $option->ServiceType == $this->service) {
-				return $shipping_option;
-			}
+                if (!empty($this->service) && $option->ServiceType == $this->service) {
+                    return $shipping_option;
+                }
 
-			array_push($shipping_options, $shipping_option);
-		}
+                array_push($shipping_options, $shipping_option);
+		    }
+        }else
+        {
+            log_error("bad fedex, response no rates." . json_encode($response), 'shipping');
+        }
 
 		usort($shipping_options, array($this, 'cmp_by_amount'));
 

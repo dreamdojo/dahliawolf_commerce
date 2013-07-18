@@ -26,7 +26,10 @@ class UpsRate
     private $ship_from_zip;
     private $service_uri;
     function getRate($shipToZip,$service,$weight,$length,$width,$height)
-        {
+    {
+
+        if(floatval($weight) < .5) $weight = 1;
+
         $data ="<?xml version=\"1.0\"?>
         <AccessRequest xml:lang=\"en-US\">
         <AccessLicenseNumber>$this->access_key</AccessLicenseNumber>

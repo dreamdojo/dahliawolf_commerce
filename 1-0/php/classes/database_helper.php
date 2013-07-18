@@ -134,11 +134,12 @@ class Database_Helper {
 					really affected so rowCount will return 0.
 					Change this behaviour with this.
 					*/
-					PDO::MYSQL_ATTR_FOUND_ROWS => true
+					PDO::MYSQL_ATTR_FOUND_ROWS => true,
+                    PDO::MYSQL_ATTR_INIT_COMMAND => "SET NAMES utf8"
 				)
 				
 			);
-			
+
 			if (!empty($log_settings)) {
 				$log_host = $log_settings['host'];
 				$log_user = $log_settings['user'];
