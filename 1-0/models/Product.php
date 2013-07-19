@@ -146,8 +146,7 @@ class Product extends _Model {
 		}
 
 		$sql .= '
-            ORDER BY
-        ORDER BY product_shop.position ASC, product.id_product ASC
+            ORDER BY product_shop.position ASC, product.id_product ASC
 		';
 
 		$params = array(
