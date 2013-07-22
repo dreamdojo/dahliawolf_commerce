@@ -67,6 +67,11 @@ class FedexRate
 				)*/
             )
         );
+
+
+
+        log_error("fedex rates request:." . json_encode($request), 'shipping');
+
         //$client->__setLocation($this->server_uri);
         $response = $client->getRates($request);
 
