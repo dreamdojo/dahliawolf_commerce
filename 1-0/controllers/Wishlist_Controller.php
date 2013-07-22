@@ -79,6 +79,7 @@ class Wishlist_Controller extends _Controller {
 		return static::wrap_result(true, NULL, _Model::$Status_Code->get_status_code_no_content());
 	}
 
+
 }
 
 ?>
