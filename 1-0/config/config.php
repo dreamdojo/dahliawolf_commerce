@@ -23,6 +23,11 @@ define('DB_API_USER', 'off_admin');
 define('DB_API_PASSWORD', 'EYCs5HhdwWbBKpvc');
 define('DB_API_DATABASE', 'offline_commerce_v1_2013');
 
+define('ADMIN_API_HOST', '127.0.0.1');
+define('ADMIN_API_USER', 'off_admin');
+define('ADMIN_API_PASSWORD', 'EYCs5HhdwWbBKpvc');
+define('ADMIN_API_DATABASE', 'offline_commerce_v1_2013');
+
 define('MYSQLHOST', DB_API_HOST);
 define('MYSQLUSER', DB_API_USER);
 define('MYSQLPASS', DB_API_PASSWORD);
