@@ -3,7 +3,7 @@ class Product extends _Model {
 
 	const TABLE = 'product';
 	const PRIMARY_KEY_FIELD = 'id_product';
-	
+
 	// 3/1/2013
 	public function get_product($id_product, $id_shop, $id_lang, $user_id = NULL) {
 		$sql = '
@@ -35,7 +35,7 @@ class Product extends _Model {
 				INNER JOIN dahliawolf_v1_2013.posting_product ON posting_product.created = m.pp_created
 			) AS mm ON product.id_product = mm.product_id
 			LEFT JOIN dahliawolf_v1_2013.like_winner ON mm.posting_id = like_winner.posting_id
-			
+
 			INNER JOIN offline_commerce_v1_2013.product_shop ON product.id_product = product_shop.id_product
 			INNER JOIN offline_commerce_v1_2013.shop ON product_shop.id_shop = shop.id_shop
 			INNER JOIN offline_commerce_v1_2013.product_lang ON product.id_product = product_lang.id_product
@@ -46,34 +46,34 @@ class Product extends _Model {
 			LEFT JOIN offline_commerce_v1_2013.shop AS default_shop ON product.id_shop_default = default_shop.id_shop
 			LEFT JOIN offline_commerce_v1_2013.tax_rules_group ON product.id_tax_rules_group = tax_rules_group.id_tax_rules_group
 			LEFT JOIN offline_commerce_v1_2013.customer ON product.user_id = customer.user_id
-			
-			
+
+
         WHERE product.id_product = :id_product AND shop.id_shop = :id_shop AND lang.id_lang = :id_lang AND product_shop.active = :active
 		';
-		
+
 		if (!empty($user_id)) {
 			$sql .= ' AND product.user_id = :user_id';
 		}
-		
+
 		$params = array(
 			':id_product' => $id_product
 			, ':id_shop' => $id_shop
 			, ':id_lang' => $id_lang
 			, ':active' => '1'
 		);
-		
+
 		if (!empty($user_id)) {
 			$params[':user_id'] = $user_id;
 		}
-		
+
 		try {
 			$data = self::$dbs[$this->db_host][$this->db_name]->select_single($sql, $params);
-			
+
 			if (!empty($data)) {
 				$posting_ids = explode('|', $data['posting_ids']);
-				
+
 				$posts = array();
-				
+
 				if (!empty($posting_ids)) {
 					$query = '
 						SELECT posting.*, image.imagename, image.source, image.dimensionsX AS width, image.dimensionsY AS height
@@ -83,26 +83,26 @@ class Product extends _Model {
 							INNER JOIN dahliawolf_v1_2013.user_username ON posting.user_id = user_username.user_id
 						WHERE posting.posting_id = :posting_id
 					';
-					
+
 					foreach ($posting_ids as $posting_id) {
 						$values = array(
 							':posting_id' => $posting_id
 						);
 						$post = self::$dbs[$this->db_host][$this->db_name]->select_single($query, $values);
-						
+
 						if (!empty($post)) {
 							array_push($posts, $post);
 						}
 					}
 				}
-				
+
 				if (!empty($posts)) {
 					$data['posts'] = $posts;
 				}
 				unset($data['posting_ids']);
 			}
-			
-			
+
+
 			return $data;
 		} catch (Exception $e) {
 			self::$Exception_Helper->server_error_exception('Unable to get product details.');
@@ -128,7 +128,7 @@ class Product extends _Model {
 				INNER JOIN dahliawolf_v1_2013.posting_product ON posting_product.created = m.pp_created
 			) AS mm ON product.id_product = mm.product_id
 			LEFT JOIN dahliawolf_v1_2013.like_winner ON mm.posting_id = like_winner.posting_id
-			
+
 			INNER JOIN offline_commerce_v1_2013.product_shop ON product.id_product = product_shop.id_product
 			INNER JOIN offline_commerce_v1_2013.shop ON product_shop.id_shop = shop.id_shop
 			INNER JOIN offline_commerce_v1_2013.product_lang ON product.id_product = product_lang.id_product
@@ -140,35 +140,35 @@ class Product extends _Model {
 			LEFT JOIN offline_commerce_v1_2013.tax_rules_group ON product.id_tax_rules_group = tax_rules_group.id_tax_rules_group
 			LEFT JOIN offline_commerce_v1_2013.customer ON product.user_id = customer.user_id
         WHERE shop.id_shop = :id_shop AND lang.id_lang = :id_lang AND product_shop.active = :active';
-		//product.status != :not_status AND 
+		//product.status != :not_status AND
 		if (!empty($user_id)) {
 			$sql .= ' AND product.user_id = :user_id';
 		}
-		
+
 		$sql .= '
-            ORDER BY product.id_product
+            ORDER BY product_shop.position ASC, product.id_product ASC
 		';
-		
+
 		$params = array(
 			':id_shop' => $id_shop
 			, ':id_lang' => $id_lang
 			, ':active' => '1'
 			//, ':not_status' => 'Pending'
 		);
-		
+
 		if (!empty($user_id)) {
 			$params[':user_id'] = $user_id;
 		}
-		
+
 		try {
 			$data = self::$dbs[$this->db_host][$this->db_name]->exec($sql, $params);
-			
+
 			if (!empty($data)) {
 				foreach ($data as $i => $row) {
 					$posting_ids = explode('|', $row['posting_ids']);
-					
+
 					$posts = array();
-					
+
 					if (!empty($posting_ids)) {
 						$query = '
 							SELECT posting.*, image.imagename, image.source, image.dimensionsX AS width, image.dimensionsY AS height
@@ -178,34 +178,34 @@ class Product extends _Model {
 								INNER JOIN dahliawolf_v1_2013.user_username ON posting.user_id = user_username.user_id
 							WHERE posting.posting_id = :posting_id
 						';
-						
+
 						foreach ($posting_ids as $posting_id) {
 							$values = array(
 								':posting_id' => $posting_id
 							);
 							$post = self::$dbs[$this->db_host][$this->db_name]->select_single($query, $values);
-							
+
 							if (!empty($post)) {
 								array_push($posts, $post);
 							}
 						}
 					}
-					
+
 					if (!empty($posts)) {
 						$data[$i]['posts'] = $posts;
 					}
 					unset($data[$i]['posting_ids']);
 				}
 			}
-			
+
 			return $data;
 		} catch (Exception $e) {
 			self::$Exception_Helper->server_error_exception('Unable to get product details.');
 		}
 	}
-	
+
 	public function get_products_in_category($params) {
-	
+
 		$query = '
 			SELECT product.*, product_lang.name AS product_lang_name, product_lang.name AS product_name, product_lang.description, product_lang.description_short, product_lang.meta_description, product_lang.meta_keywords, product_lang.meta_title, product_lang.link_rewrite, category_product.position, customer.username, (SELECT product_file.product_file_id FROM product_file WHERE product_file.product_id = product.id_product ORDER BY product_file.product_file_id ASC LIMIT 1) AS product_file_id, IF(EXISTS(SELECT category_product.id_category_product FROM category_product WHERE category_product.id_category = 1 AND category_product.id_product = product.id_product), 1, 0) AS is_new
 			FROM category
@@ -220,25 +220,25 @@ class Product extends _Model {
 				AND product_lang.id_lang = :id_lang
 				AND product_shop.active = 1
 				AND category.active = 1';
-		
+
 		if (!empty($params['user_id'])) {
 			$query .= ' AND product.user_id = :user_id';
 		}
-		
+
 		$query .= '
 			ORDER BY category_product.position ASC
 		';
-		
+
 		$values = array(
 			':id_shop' 			=> $params['id_shop']
 			, ':id_category' 	=> $params['id_category']
 			, ':id_lang' 		=> $params['id_lang']
 		);
-		
+
 		if (!empty($params['user_id'])) {
 			$values[':user_id'] = $params['user_id'];
 		}
-		
+
 		try {
 			$query_result = self::$dbs[$this->db_host][$this->db_name]->exec($query, $values);
 			if (empty($query_result)) return NULL;
@@ -247,7 +247,7 @@ class Product extends _Model {
 			self::$Exception_Helper->server_error_exception('Could not get products in category');
 		}
 	}
-	
+
 	public function get_number_of_products_in_category($params) {
 
          $query = '
@@ -265,21 +265,21 @@ class Product extends _Model {
 				AND product_shop.active = 1
 				AND category.active = 1
 		';
-		
+
 		if (!empty($params['user_id'])) {
 			$query .= ' AND product.user_id = :user_id';
 		}
-		
+
 		$values = array(
 			':id_shop' => $params['conditions']['id_shop']
 			, ':id_category' => $params['conditions']['id_category']
 			, ':id_lang' => $params['conditions']['id_lang']
 		);
-		
+
 		if (!empty($params['user_id'])) {
 			$values[':user_id'] = $params['conditions']['user_id'];
 		}
-		
+
 		try {
 			$query_result = self::$dbs[$this->db_host][$this->db_name]->exec($query, $values);
 			if (empty($query_result)) return NULL;
@@ -318,23 +318,23 @@ class Product extends _Model {
 				GROUP BY id_product_attribute
 			) AS attributes ON product_attribute.id_product_attribute = attributes.id_product_attribute
 		WHERE product.id_product = :id_product AND shop.id_shop = :id_shop AND product_lang.id_lang = :id_lang";
-		
+
 		if (is_numeric($id_product_attribute)) {
 			$sql .= " AND product_attribute.id_product_attribute = :id_product_attribute";
 		}
-		
+
 		$sql .= " ORDER BY product_attribute.id_product_attribute ASC";
-		
+
 		$params = array(
 			':id_product' => $id_product
 			, ':id_shop' => $id_shop
 			, ':id_lang' => $id_lang
 		);
-		
+
 		if (is_numeric($id_product_attribute)) {
 			$params[':id_product_attribute'] = $id_product_attribute;
 		}
-		
+
 		try {
 			if (is_numeric($id_product_attribute)) {
 				$data = self::$dbs[$this->db_host][$this->db_name]->select_single($sql, $params);
@@ -347,7 +347,7 @@ class Product extends _Model {
 			self::$Exception_Helper->server_error_exception('Unable to get product combinations.' . $e->getMessage());
 		}
 	}
-	
+
 	// 3/1/2013
 	public function get_product_features($id_product, $id_shop, $id_lang) {
 		$sql = "
@@ -367,22 +367,22 @@ class Product extends _Model {
 		WHERE product.id_product = :id_product AND shop.id_shop = :id_shop AND lang.id_lang = :id_lang
 		ORDER BY feature.position ASC, feature_lang.name ASC
 		";
-		
+
 		$params = array(
 			':id_product' => $id_product
 			, ':id_shop' => $id_shop
 			, ':id_lang' => $id_lang
 		);
-		
+
 		try {
 			$data = self::$dbs[$this->db_host][$this->db_name]->exec($sql, $params);
-			
+
 			return $data;
 		} catch (Exception $e) {
 			self::$Exception_Helper->server_error_exception('Unable to get product features.' . $e->getMessage());
 		}
 	}
-	
+
 	// 3/1/2013
 	public function get_product_tags($id_product, $id_shop, $id_lang) {
 		$sql = "
@@ -397,22 +397,22 @@ class Product extends _Model {
 		WHERE product.id_product = :id_product AND shop.id_shop = :id_shop AND lang.id_lang = :id_lang
 		ORDER BY tag.name ASC
 		";
-		
+
 		$params = array(
 			':id_product' => $id_product
 			, ':id_shop' => $id_shop
 			, ':id_lang' => $id_lang
 		);
-		
+
 		try {
 			$data = self::$dbs[$this->db_host][$this->db_name]->exec($sql, $params);
-			
+
 			return $data;
 		} catch (Exception $e) {
 			self::$Exception_Helper->server_error_exception('Unable to get product features.' . $e->getMessage());
 		}
 	}
-	
+
 	// 3/1/2013
 	public function get_product_comments($id_product, $id_shop, $id_lang) {
 		$sql = "
@@ -427,23 +427,23 @@ class Product extends _Model {
 		WHERE product.id_product = :id_product AND shop.id_shop = :id_shop AND lang.id_lang = :id_lang AND product_comment.deleted = :deleted
 		ORDER BY product_comment.date_add DESC, product_comment.id_product_comment DESC
 		";
-		
+
 		$params = array(
 			':id_product' => $id_product
 			, ':id_shop' => $id_shop
 			, ':id_lang' => $id_lang
 			, ':deleted' => '0'
 		);
-		
+
 		try {
 			$data = self::$dbs[$this->db_host][$this->db_name]->exec($sql, $params);
-			
+
 			return $data;
 		} catch (Exception $e) {
 			self::$Exception_Helper->server_error_exception('Unable to get product comments.' . $e->getMessage());
 		}
 	}
-	
+
 	// 3/1/2013
 	public function get_product_files($id_product, $id_shop, $id_lang) {
 		$sql = "
@@ -457,22 +457,22 @@ class Product extends _Model {
 		WHERE product.id_product = :id_product AND shop.id_shop = :id_shop AND lang.id_lang = :id_lang
 		ORDER BY product_file.product_file_id ASC
 		";
-		
+
 		$params = array(
 			':id_product' => $id_product
 			, ':id_shop' => $id_shop
 			, ':id_lang' => $id_lang
 		);
-		
+
 		try {
 			$data = self::$dbs[$this->db_host][$this->db_name]->exec($sql, $params);
-			
+
 			return $data;
 		} catch (Exception $e) {
 			self::$Exception_Helper->server_error_exception('Unable to get product files.' . $e->getMessage());
 		}
 	}
-	
+
 	public function get_order_products($id_order, $id_shop, $id_lang) {
 		$sql = "
 		SELECT order_detail.*, attributes.attribute_names AS attributes, (SELECT product_file.product_file_id FROM product_file WHERE product_file.product_id = order_detail.product_id ORDER BY product_file.product_file_id ASC LIMIT 1) AS product_file_id
@@ -496,24 +496,24 @@ class Product extends _Model {
 			) AS attributes ON order_detail.product_attribute_id = attributes.id_product_attribute
 		WHERE order_detail.id_order = :id_order AND order_detail.id_shop = :id_shop
 		";
-		
+
 		$params = array(
 			':id_order' => $id_order
 			, ':id_shop' => $id_shop
 			, ':id_lang' => $id_lang
 		);
-		
+
 		try {
 			$data = self::$dbs[$this->db_host][$this->db_name]->exec($sql, $params);
-			
+
 			return $data;
 		} catch (Exception $e) {
 			self::$Exception_Helper->server_error_exception('Unable to get order products.' . $e->getMessage());
 		}
 	}
-	
+
 	public function get_product_attributes($params) {
-		
+
 		if($params['conditions']['id_shop']=='' ){
 		return resultArray(false, NULL, 'Please pass id_shop in parameter!');
 		}
@@ -525,25 +525,25 @@ class Product extends _Model {
 		}
 		if($params['conditions']['id_product_attribute']=='' ){
 			$addToQuery = "";
-			
+
 			$values = array(
 			':id_product' => $params['conditions']['id_product']
 			, ':id_shop' => $params['conditions']['id_shop']
 			);
 		} else {
 			$addToQuery = " AND product_attribute_shop.id_product_attribute = :id_product_attribute ";
-			
+
 			$values = array(
 			':id_product' => $params['conditions']['id_product']
 			, ':id_shop' => $params['conditions']['id_shop']
 			, ':id_product_attribute' => $params['conditions']['id_product_attribute']
 			);
 		}
-		
+
 		$query = '
 			SELECT
 				product_attribute.id_product_attribute
-				, product_attribute.id_product 
+				, product_attribute.id_product
 				, product_attribute.reference
 				, product_attribute.supplier_reference
 				, product_attribute.location
@@ -557,8 +557,8 @@ class Product extends _Model {
 				, product_attribute.unit_price_impact
 				, product_attribute.default_on
 				, product_attribute.minimal_quantity
-				, product_attribute.available_date 
-				
+				, product_attribute.available_date
+
 				, product_attribute_shop.id_product_attribute
 				, product_attribute_shop.id_shop
 				, product_attribute_shop.wholesale_price
@@ -569,87 +569,87 @@ class Product extends _Model {
 				, product_attribute_shop.default_on
 				, product_attribute_shop.minimal_quantity
 				, product_attribute_shop.available_date
-				
+
 				, image.id_image
 				, image.id_product
 				, image.position
 				, image.cover
 				, image_lang.legend
 				, image_shop.cover
-				
+
 				, attribute_group.id_attribute_group
 				, attribute_group.is_color_group
 				, attribute_group.group_type
 				, attribute_group.position
-				
+
 				, attribute_group_lang.id_attribute_group
 				, attribute_group_lang.id_lang
 				, attribute_group_lang.name
 				, attribute_group_lang.public_name
-				
+
 				, attribute.id_attribute
 				, attribute.id_attribute_group
 				, attribute.color
 				, attribute.position
-				
+
 				, attribute_lang.id_attribute
 				, attribute_lang.id_lang
 				, attribute_lang.name
-				
+
 				, attribute_shop.id_attribute_shop
 				, attribute_shop.id_attribute
 				, attribute_shop.id_shop
-				
+
 				, attribute_impact.id_attribute_impact
 				, attribute_impact.id_product
 				, attribute_impact.id_attribute
 				, attribute_impact.weight
 				, attribute_impact.price
-				
+
 			FROM product_attribute
-				INNER JOIN product_attribute_shop ON product_attribute.id_product_attribute = product_attribute_shop.id_product_attribute 
-				INNER JOIN product_attribute_image ON product_attribute.id_product_attribute = product_attribute_image.id_product_attribute 
+				INNER JOIN product_attribute_shop ON product_attribute.id_product_attribute = product_attribute_shop.id_product_attribute
+				INNER JOIN product_attribute_image ON product_attribute.id_product_attribute = product_attribute_image.id_product_attribute
 				INNER JOIN image ON product_attribute_image.id_image = image.id_image
 				INNER JOIN image_lang ON image.id_image = image_lang.id_image
 				INNER JOIN image_shop ON image.id_image = image_shop.id_image
-				
+
 				INNER JOIN product_attribute_combination ON product_attribute_combination.id_product_attribute = product_attribute.id_product_attribute
-				
-				INNER JOIN attribute ON product_attribute_combination.id_attribute = attribute.id_attribute 
+
+				INNER JOIN attribute ON product_attribute_combination.id_attribute = attribute.id_attribute
 				INNER JOIN attribute_lang ON attribute.id_attribute = attribute_lang.id_attribute
 				INNER JOIN attribute_shop ON attribute.id_attribute = attribute_shop.id_attribute
-				
+
 				INNER JOIN attribute_group ON attribute_group.id_attribute_group = attribute.id_attribute_group
 				INNER JOIN attribute_group_lang ON attribute_group_lang.id_attribute_group = attribute_group.id_attribute_group
 				INNER JOIN attribute_group_shop ON attribute_group_shop.id_attribute_group = attribute_group.id_attribute_group
-				
+
 				INNER JOIN attribute_impact ON attribute_impact.id_attribute = attribute.id_attribute
-			WHERE 
+			WHERE
 				product_attribute.id_product = :id_product
 				AND attribute_impact.id_product = :id_product
 				AND image.id_product = :id_product
-				
+
 				AND product_attribute_shop.id_shop = :id_shop
 				AND attribute_group_shop.id_shop = :id_shop
 				AND image_shop.id_shop = :id_shop
 				AND attribute_shop.id_shop = :id_shop
-				
+
 				AND attribute_group_lang.id_lang = :id_lang
 				AND image_lang.id_lang = :id_lang
 				AND attribute_lang.id_lang = :id_lang
-				
+
 			'. $addToQuery;
-			
+
 		$stmt = $this->run($query, $values);
 		$this->result = $stmt->fetchAll();
-       	
+
        	if (empty($this->result)) {
           	return resultArray(false, NULL, 'Could not get product attributes.');
       	}
 
         return resultArray(true, $this->result[0]);
 	}
-	
+
 	public function get_attributes($params) {
 		if($params['conditions']['id_shop']=='' ){
 		return resultArray(false, NULL, 'Please pass id_shop in parameter!');
@@ -667,30 +667,30 @@ class Product extends _Model {
 				, attribute.id_attribute_group
 				, attribute.color
 				, attribute.position
-				
-				, attribute_lang.id_attribute 
-				, attribute_lang.id_lang 
+
+				, attribute_lang.id_attribute
+				, attribute_lang.id_lang
 				, attribute_lang.name
-				
+
 				, attribute_shop.id_attribute
 				, attribute_shop.id_attribute_shop
 				, attribute_shop.id_shop
-				
+
 			FROM attribute
 				INNER JOIN attribute_lang ON attribute.id_attribute = attribute_lang.id_attribute
 				INNER JOIN attribute_shop ON attribute.id_attribute = attribute_shop.id_attribute
-				
+
 				INNER JOIN attribute_group ON attribute_group.id_attribute_group = attribute.id_attribute_group
 				INNER JOIN attribute_group_lang ON attribute_group_lang.id_attribute_group = attribute_group.id_attribute_group
 				INNER JOIN attribute_group_shop ON attribute_group_shop.id_attribute_group = attribute_group.id_attribute_group
-				
+
 				INNER JOIN attribute_impact ON attribute_impact.id_attribute = attribute.id_attribute
-			WHERE 
+			WHERE
 				attribute.id_attribute = :id_attribute
-				
+
 				AND attribute_lang.id_lang = :id_lang
 				AND attribute_shop.id_shop = :id_shop
-				
+
 				AND attribute_group_lang.id_lang = :id_lang
 				AND attribute_group_shop.id_shop = :id_shop
 		';
@@ -699,10 +699,10 @@ class Product extends _Model {
 			, ':id_shop' => $params['conditions']['id_shop']
 			, ':id_shop' => $params['conditions']['id_shop']
 		);
-		
+
 		$stmt = $this->run($query, $values);
 		$this->result = $stmt->fetchAll();
-       	
+
        	if (empty($this->result)) {
           	return resultArray(false, NULL, 'Could not get attributes.');
       	}
@@ -740,21 +740,21 @@ class Product extends _Model {
 				, image.id_product
 				, image.position
 				, image.cover
-				 
+
 				, image_lang.legend
-				
+
 				, image_shop.cover
 			FROM image
 				INNER JOIN image_lang ON image.id_image = image_lang.id_image
 				INNER JOIN image_shop ON image.id_image = image_shop.id_image
-			WHERE 
+			WHERE
 				image_lang.id_lang = :id_lang
 				AND image_shop.id_shop = :id_shop
 		'. $addToQuery;
-		
+
 		$stmt = $this->run($query, $values);
 		$this->result = $stmt->fetchAll();
-       	
+
        	if (empty($this->result)) {
           	return resultArray(false, NULL, 'Could not get images.');
       	}
@@ -785,25 +785,25 @@ class Product extends _Model {
 			$addToQuery = " AND image.id_product = :id_product ";
 			$values[':id_product'] = $params['conditions']['id_product'];
 		}
-		
+
 		$query = '
 			SELECT
 				feature.id_feature
 				, feature.position
-				 
+
 				, feature_lang.id_feature_lang
 				, feature_lang.id_feature
 				, feature_lang.id_lang
 				, feature_lang.name
-				
+
 				, feature_shop.id_feature_shop
 				, feature_shop.id_feature
 				, feature_shop.id_shop
-				
+
 				, feature_value.id_feature_value
 				, feature_value.id_feature
 				, feature_value.custom
-				
+
 				, feature_value_lang.id_feature_value_lang
 				, feature_value_lang.id_feature_value
 				, feature_value_lang.id_lang
@@ -811,18 +811,18 @@ class Product extends _Model {
 			FROM feature
 				INNER JOIN feature_lang ON feature.id_feature = feature_lang.id_feature
 				INNER JOIN feature_shop ON feature.id_feature = feature_shop.id_feature
-				
+
 				INNER JOIN feature_value ON feature.id_feature = feature_value.id_feature
 				INNER JOIN feature_value_lang ON feature_value.id_feature_value = feature_value_lang.id_feature_value
-				
-			WHERE 
+
+			WHERE
 				feature_lang.id_lang = :id_lang
 				feature_value_lang.id_lang = :id_lang
 				AND feature_shop.id_shop = :id_shop
 		'. $addToQuery;
-		
+
 		$stmt = $this->run($query, $values);
-		
+
 		$this->result = $stmt->fetchAll();
        	if (empty($this->result)) {
           	return resultArray(false, NULL, 'Could not get product features.');
@@ -833,8 +833,8 @@ class Product extends _Model {
 	*/
 	public function get_product_price($params) {
 		$query = '
-			SELECT * 
-			FROM product INNER JOIN product_shop ON product.id_product = product_shop.id_product 
+			SELECT *
+			FROM product INNER JOIN product_shop ON product.id_product = product_shop.id_product
 			WHERE product.id_product = :id_product
 				AND product_shop.id_shop = :id_shop
 		';
@@ -843,7 +843,7 @@ class Product extends _Model {
 			, ':id_shop' => $params['conditions']['id_shop']
 		);
 		$stmt = $this->run($query, $values);
-		
+
 		$this->result = $stmt->fetchAll();
        	if (empty($this->result)) {
           	return resultArray(false, NULL, 'Could not get product details.');
@@ -851,11 +851,11 @@ class Product extends _Model {
 
         return resultArray(true, $this->result);
 	}
-	
+
 	public function get_product_price_combination($params) {
 		$query = '
-			SELECT * 
-			FROM product INNER JOIN product_lang ON product.id_product = product_shop.id_product 
+			SELECT *
+			FROM product INNER JOIN product_lang ON product.id_product = product_shop.id_product
 			WHERE product.id_product = :id_product
 				AND product_shop.id_shop = :id_shop
 		';
@@ -864,7 +864,7 @@ class Product extends _Model {
 			, ':id_shop' => $params['conditions']['id_shop']
 		);
 		$stmt = $this->run($query, $values);
-		
+
 		$this->result = $stmt->fetchAll();
        	if (empty($this->result)) {
           	return resultArray(false, NULL, 'Could not get product details.');
@@ -872,11 +872,11 @@ class Product extends _Model {
 
         return resultArray(true, $this->result);
 	}
-	
+
 	public function get_product_attachment($params) {
 		$query = '
-			SELECT * 
-			FROM product INNER JOIN product_attachment ON product.id_product = product_attachment.id_product_attachment 
+			SELECT *
+			FROM product INNER JOIN product_attachment ON product.id_product = product_attachment.id_product_attachment
 			WHERE product.id_product = :id_product
 				AND product_attachment.id_attachment = :id_attachment
 				AND product_attachment.id_product_attachment = :id_product_attachment
@@ -887,7 +887,7 @@ class Product extends _Model {
 			, ':id_product_attachment' => $params['conditions']['id_product_attachment']
 		);
 		$stmt = $this->run($query, $values);
-		
+
 		$this->result = $stmt->fetchAll();
        	if (empty($this->result)) {
           	return resultArray(false, NULL, 'Could not get product details.');
@@ -895,11 +895,11 @@ class Product extends _Model {
 
         return resultArray(true, $this->result);
 	}
-	
+
 	public function get_product_carrier($params) {
 		$query = '
-			SELECT * 
-			FROM product INNER JOIN product_lang ON product.id_product = product_carrier.id_product 
+			SELECT *
+			FROM product INNER JOIN product_lang ON product.id_product = product_carrier.id_product
 			WHERE product.id_product = :id_product
 				AND product_lang.id_lang = :id_lang
 				AND product_carrier.id_shop = :id_shop
@@ -914,7 +914,7 @@ class Product extends _Model {
 			, ':id_carrier_reference' => $params['conditions']['id_carrier_reference']
 		);
 		$stmt = $this->run($query, $values);
-		
+
 		$this->result = $stmt->fetchAll();
        	if (empty($this->result)) {
           	return resultArray(false, NULL, 'Could not get product details.');
@@ -922,11 +922,11 @@ class Product extends _Model {
 
         return resultArray(true, $this->result);
 	}
-	
+
 	public function get_product_comment($params) {
 		$query = '
-			SELECT * 
-			FROM product INNER JOIN product_comment ON product.id_product = product_comment.id_product 
+			SELECT *
+			FROM product INNER JOIN product_comment ON product.id_product = product_comment.id_product
 			WHERE product.id_product = :id_product
 		';
 		$values = array(
@@ -934,7 +934,7 @@ class Product extends _Model {
 			, ':id_product_comment' => $params['conditions']['id_product_comment']
 		);
 		$stmt = $this->run($query, $values);
-		
+
 		$this->result = $stmt->fetchAll();
        	if (empty($this->result)) {
           	return resultArray(false, NULL, 'Could not get product details.');
@@ -942,11 +942,11 @@ class Product extends _Model {
 
         return resultArray(true, $this->result);
 	}
-	
+
 	public function get_product_tax($params) {
 		$query = '
-			SELECT * 
-			FROM product INNER JOIN product_lang ON product.id_product = product_lang.id_product 
+			SELECT *
+			FROM product INNER JOIN product_lang ON product.id_product = product_lang.id_product
 			WHERE product.id_product = :id_product
 				AND product_lang.id_lang = :id_lang
 		';
@@ -956,7 +956,7 @@ class Product extends _Model {
 			, ':id_shop' => $params['conditions']['id_shop']
 		);
 		$stmt = $this->run($query, $values);
-		
+
 		$this->result = $stmt->fetchAll();
        	if (empty($this->result)) {
           	return resultArray(false, NULL, 'Could not get product details.');
@@ -964,13 +964,13 @@ class Product extends _Model {
 
         return resultArray(true, $this->result);
 	}
-	
+
 	public function get_product_country_tax($params) {
 		$query = '
-			SELECT * 
-			FROM product 
-			INNER JOIN product_lang ON product.id_product = product_lang.id_product 
-			INNER JOIN product_country_tax ON product.id_product = product_country_tax.id_product 
+			SELECT *
+			FROM product
+			INNER JOIN product_lang ON product.id_product = product_lang.id_product
+			INNER JOIN product_country_tax ON product.id_product = product_country_tax.id_product
 			WHERE product.id_product = :id_product
 				AND product_lang.id_lang = :id_lang
 				AND product_lang.id_country = :id_country
@@ -981,7 +981,7 @@ class Product extends _Model {
 			, ':id_country' => $params['conditions']['id_country']
 		);
 		$stmt = $this->run($query, $values);
-		
+
 		$this->result = $stmt->fetchAll();
        	if (empty($this->result)) {
           	return resultArray(false, NULL, 'Could not get product details.');
@@ -989,13 +989,13 @@ class Product extends _Model {
 
         return resultArray(true, $this->result);
 	}
-	
+
 	public function get_product_supplier($params) {
 		$query = '
-			SELECT * 
-			FROM product 
-			INNER JOIN product_lang ON product.id_product = product_lang.id_product 
-			INNER JOIN product_supplier ON product.id_product = product_supplier.id_product 
+			SELECT *
+			FROM product
+			INNER JOIN product_lang ON product.id_product = product_lang.id_product
+			INNER JOIN product_supplier ON product.id_product = product_supplier.id_product
 
 			WHERE product.id_product = :id_product
 				AND product_lang.id_lang = :id_lang
@@ -1013,7 +1013,7 @@ class Product extends _Model {
 			, ':id_shop' => $params['conditions']['id_shop']
 		);
 		$stmt = $this->run($query, $values);
-		
+
 		$this->result = $stmt->fetchAll();
        	if (empty($this->result)) {
           	return resultArray(false, NULL, 'Could not get product details.');
@@ -1021,11 +1021,11 @@ class Product extends _Model {
 
         return resultArray(true, $this->result);
 	}
-	
+
 	public function get_product_manufacturer($params) {
 		$query = '
-			SELECT * 
-			FROM product INNER JOIN product_lang ON product.id_product = product_lang.id_product 
+			SELECT *
+			FROM product INNER JOIN product_lang ON product.id_product = product_lang.id_product
 			WHERE product.id_product = :id_product
 				AND product_lang.id_lang = :id_lang
 		';
@@ -1034,7 +1034,7 @@ class Product extends _Model {
 			, ':id_lang' => $params['conditions']['id_lang']
 		);
 		$stmt = $this->run($query, $values);
-		
+
 		$this->result = $stmt->fetchAll();
        	if (empty($this->result)) {
           	return resultArray(false, NULL, 'Could not get product details.');
@@ -1042,10 +1042,10 @@ class Product extends _Model {
 
         return resultArray(true, $this->result);
 	}
-	
+
 	public function get_product_stock($params) {
 		$query = '
-			SELECT * 
+			SELECT *
 			FROM product
 			INNER JOIN warehouse_product_location ON product.id_product = warehouse_product_location.id_product
 			INNER JOIN product_lang ON product.id_product = product_lang.id_product
@@ -1063,7 +1063,7 @@ class Product extends _Model {
 			, ':id_product_attribute' => $params['conditions']['id_product_attribute']
 		);
 		$stmt = $this->run($query, $values);
-		
+
 		$this->result = $stmt->fetchAll();
        	if (empty($this->result)) {
           	return resultArray(false, NULL, 'Could not get product details.');
@@ -1071,13 +1071,13 @@ class Product extends _Model {
 
         return resultArray(true, $this->result);
 	}
-	
+
 	public function get_product_tag($params) {
 		$query = '
-			SELECT * 
-			FROM product 
+			SELECT *
+			FROM product
 			INNER JOIN product_lang ON product.id_product = product_lang.id_product
-			INNER JOIN product_tag ON product.id_product = product_tag.id_product 
+			INNER JOIN product_tag ON product.id_product = product_tag.id_product
 			WHERE product.id_product = :id_product
 				AND product_lang.id_lang = :id_lang
 				AND product_tag.id_product_tag = :id_product_tag
@@ -1088,7 +1088,7 @@ class Product extends _Model {
 			, ':id_product_tag' => $params['conditions']['id_product_tag']
 		);
 		$stmt = $this->run($query, $values);
-		
+
 		$this->result = $stmt->fetchAll();
        	if (empty($this->result)) {
           	return resultArray(false, NULL, 'Could not get product details.');
@@ -1096,10 +1096,10 @@ class Product extends _Model {
 
         return resultArray(true, $this->result);
 	}
-	
+
 	public function get_product_sale($params) {
 		$query = '
-			SELECT * 
+			SELECT *
 			FROM product
 			WHERE product.id_product = :id_product
 		';
@@ -1107,7 +1107,7 @@ class Product extends _Model {
 			':id_product' => $params['conditions']['id_product']
 		);
 		$stmt = $this->run($query, $values);
-		
+
 		$this->result = $stmt->fetchAll();
        	if (empty($this->result)) {
           	return resultArray(false, NULL, 'Could not get product details.');
@@ -1115,13 +1115,13 @@ class Product extends _Model {
 
         return resultArray(true, $this->result);
 	}
-	
+
 	public function get_product_download($params) {
 		$query = '
-			SELECT * 
-			FROM product 
-			INNER JOIN  product_download ON product.id_product = product_download.id_product 
-			INNER JOIN product_lang ON product.id_product = product_lang.id_product 
+			SELECT *
+			FROM product
+			INNER JOIN  product_download ON product.id_product = product_download.id_product
+			INNER JOIN product_lang ON product.id_product = product_lang.id_product
 			WHERE product.id_product = :id_product
 				AND product_download.id_product_download = :id_product_download
 		';
@@ -1130,7 +1130,7 @@ class Product extends _Model {
 			, ':id_product_download' => $params['conditions']['id_product_download']
 		);
 		$stmt = $this->run($query, $values);
-		
+
 		$this->result = $stmt->fetchAll();
        	if (empty($this->result)) {
           	return resultArray(false, NULL, 'Could not get product details.');
