@@ -10,8 +10,10 @@ class Orders_Controller extends _Controller {
 		$this->load('Order_Payment');
 		$this->load('Order_Detail');
 		$this->load('Order_Detail_Tax');
-		$this->load('Payment_Method', DB_API_HOST, DB_API_USER, DB_API_PASSWORD, DB_API_DATABASE);
-		
+		//$this->load('Payment_Method', DB_API_HOST, DB_API_USER, DB_API_PASSWORD, DB_API_DATABASE);
+        $this->load('Payment_Method', ADMIN_API_HOST, ADMIN_API_USER, ADMIN_API_PASSWORD, ADMIN_API_DATABASE);
+
+
 		$data = array();
 		
 		if (empty($params['payment_info']) || !is_array($params['payment_info'])) {
