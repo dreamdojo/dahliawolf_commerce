@@ -1,6 +1,4 @@
 <?
-error_reporting(E_ALL);
-ini_set('display_errors', '1');
 class Orders_Controller extends _Controller {
 
 	public function place_order($params = array()) {
@@ -13,7 +11,7 @@ class Orders_Controller extends _Controller {
 		$this->load('Order_Detail');
 		$this->load('Order_Detail_Tax');
 		$this->load('Payment_Method', ADMIN_API_HOST, ADMIN_API_USER, ADMIN_API_PASSWORD, ADMIN_API_DATABASE);
-
+		
 		$data = array();
 
 		if (empty($params['payment_info']) || !is_array($params['payment_info'])) {

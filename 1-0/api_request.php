@@ -45,6 +45,7 @@ try {
 	
 	// REST Call
 	else if ($request_method == 'REST' && !empty($request['calls'])) {
+        /** @var  $controller _Controller */
 		$result = $controller->process_request($request);
 		
 		// JSON
