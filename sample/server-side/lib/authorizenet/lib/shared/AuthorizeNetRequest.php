@@ -13,7 +13,7 @@ abstract class AuthorizeNetRequest
     protected $_post_string; 
     public $VERIFY_PEER = true; // Set to false if getting connection errors.
     protected $_sandbox = true;
-    protected $_log_file = false;
+    protected $_log_file = true;
     
     /**
      * Set the _post_string
@@ -108,7 +108,7 @@ abstract class AuthorizeNetRequest
                 file_put_contents($this->_log_file, "----CURL ERROR----\n$curl_error\n\n", FILE_APPEND);
             }
             // Do not log requests that could contain CC info.
-            // file_put_contents($this->_log_file, "----Request----\n{$this->_post_string}\n", FILE_APPEND);
+            file_put_contents($this->_log_file, "----Request----\n{$this->_post_string}\n", FILE_APPEND);
             
             file_put_contents($this->_log_file, "----Response----\n$response\n\n", FILE_APPEND);
         }
