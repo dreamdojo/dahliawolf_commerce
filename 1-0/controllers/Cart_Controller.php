@@ -1694,6 +1694,7 @@ class Cart_Controller extends _Controller {
 		}
 		
 		$data = $result_decoded['data']['begin_paypal_purchase']['data'];
+		
 		return static::wrap_result(true, $data);
 	}
 	

@@ -1138,5 +1138,23 @@ class Product extends _Model {
 
         return resultArray(true, $this->result);
 	}
+
+	public function offset_quantity($id_product, $offset) {
+		$query = '
+			UPDATE product SET quantity = quantity + :offset WHERE id_product = :id_product
+		';
+		$values = array(
+			':id_product' => $id_product
+			, ':offset' => $offset
+		);
+
+		try {
+			$update = self::$dbs[$this->db_host][$this->db_name]->exec($query, $values);
+
+			return $update;
+		} catch (Exception $e) {
+			self::$Exception_Helper->server_error_exception('Unable to update product quantity.');
+		}
+	}
 }
 ?>

@@ -4,7 +4,7 @@ class Orders extends _Model {
 
 	const TABLE = 'orders';
 	const PRIMARY_KEY_FIELD = 'id_order';
-	
+
 	protected $fields = array(
 		'reference'
 		, 'id_shop_group'
@@ -25,6 +25,7 @@ class Orders extends _Model {
 		, 'gift'
 		, 'gift_message'
 		, 'shipping_number'
+		, 'total'
 		, 'total_discounts'
 		, 'total_discounts_tax_incl'
 		, 'total_discounts_tax_excl'
