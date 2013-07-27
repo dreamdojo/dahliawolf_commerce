@@ -10,12 +10,11 @@ class Dw_User_Point extends _Model {
 		, 'posting_id'
 	);
 
-	public function reverse_points($user_point_id, $user_id) {
+	public function delete_order_points($id_order) {
 		return $this->db_delete(
-			'user_point_id = :user_point_id AND user_id = :user_id'
+			'id_order = :id_order'
 			, array(
-				':user_point_id' => $user_point_id
-				, ':user_id' => $user_id
+				':id_order' => $id_order
 			)
 		);
 	}

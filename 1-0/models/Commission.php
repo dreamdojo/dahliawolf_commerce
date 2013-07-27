@@ -11,13 +11,23 @@ class Commission extends _Model {
 		, 'deleted'
 	);
 
-	public function reverse_commission($id_commission) {
-		return $this->save(
-			array(
-				'id_commission' => $id_commission
-				, 'deleted' => date('Y-m-d H:i:s')
-			)
+	public function delete_order_commissions($id_order) {
+		$query = '
+			UPDATE commission
+			SET deleted = NOW()
+			WHERE id_order = :id_order
+		';
+		$values = array(
+			':id_order' => $id_order
 		);
+
+		try {
+			$update = self::$dbs[$this->db_host][$this->db_name]->exec($query, $values);
+
+			return $update;
+		} catch (Exception $e) {
+			self::$Exception_Helper->server_error_exception('Unable to reverse order commissions.');
+		}
 	}
 }
 ?>

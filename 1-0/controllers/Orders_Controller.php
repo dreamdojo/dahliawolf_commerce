@@ -11,7 +11,7 @@ class Orders_Controller extends _Controller {
 		$this->load('Order_Detail');
 		$this->load('Order_Detail_Tax');
 		$this->load('Payment_Method', ADMIN_API_HOST, ADMIN_API_USER, ADMIN_API_PASSWORD, ADMIN_API_DATABASE);
-		
+
 		$data = array();
 
 		if (empty($params['payment_info']) || !is_array($params['payment_info'])) {
@@ -509,6 +509,7 @@ class Orders_Controller extends _Controller {
 			'user_id' => $params['user_id']
 			, 'point_id' => 11
 			, 'points' => $points
+			, 'id_order' => $data['id_order']
 		);
 		$this->Dw_User_Point->save($user_point_data);
 
@@ -745,6 +746,78 @@ class Orders_Controller extends _Controller {
 		return static::wrap_result(true, $data);
 	}
 
+	public function void_order($params) {
+		// Validations
+		$input_validations = array(
+			'id_order' => array(
+				'label' => 'Order Id'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+		);
+		$this->Validate->add_many($input_validations, $params, true);
+		$this->Validate->run();
+
+		// Reverse user points and
+		$this->reverse_points($params['id_order']);
+		$this->reverse_commissions($params['id_order']);
+
+		// Restore quantity
+		$this->restore_quantity($params['id_order']);
+	}
+
+	public function return_order($params) {
+		// Validations
+		$input_validations = array(
+			'id_order' => array(
+				'label' => 'Order Id'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+		);
+		$this->Validate->add_many($input_validations, $params, true);
+		$this->Validate->run($params['id_order']);
+
+		// Reverse user points and
+		$this->reverse_points($params['id_order']);
+		$this->reverse_commissions($params['id_order']);
+
+		// Restore quantity
+		$this->restore_quantity($params['id_order']);
+	}
+
+	private function reverse_points($id_order) {
+		$this->load('Dw_User_Point', DW_API_HOST, DW_API_USER, DW_API_PASSWORD, DW_API_DATABASE);
+
+		$this->Dw_User_Point->delete_order_points($id_order);
+	}
+
+	private function reverse_commissions($id_order) {
+		$this->load('Commission');
+
+		$this->Commission->delete_order_commissions($id_order);
+	}
+
+	private function restore_quantity($id_order) {
+		$this->load('Order_Detail');
+		// Get order products
+		$products = $this->Order_Detail->get_rows(
+			array(
+				'id_order' => $id_order
+			)
+		);
+
+		// Loop through products and increment quantity
+		if (!empty($products)) {
+			foreach ($products as $i => $products) {
+
+			}
+		}
+	}
 }
 
 ?>
