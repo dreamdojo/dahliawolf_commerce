@@ -19,6 +19,8 @@ class Order_Payment extends _Model {
 		, 'card_expiration'
 		, 'card_holder'
 		, 'date_add'
+		, 'amount_authorized'
+		, 'authorization_id'
 	);
 }
 ?>
