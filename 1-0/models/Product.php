@@ -47,7 +47,8 @@ class Product extends _Model {
 			LEFT JOIN offline_commerce_v1_2013.shop AS default_shop ON product.id_shop_default = default_shop.id_shop
 			LEFT JOIN offline_commerce_v1_2013.tax_rules_group ON product.id_tax_rules_group = tax_rules_group.id_tax_rules_group
 			LEFT JOIN offline_commerce_v1_2013.customer ON product.user_id = customer.user_id
-			LEFT JOIN dahliawolf_v1_2013.user_username as product_username ON product.user_id = product_username.user_id
+			LEFT JOIN dahliawolf_v1_2013.posting ON posting.product_id = mm.product_id
+			LEFT JOIN dahliawolf_v1_2013.user_username AS product_username ON posting.user_id = user_username.user_id
 
 
         WHERE product.id_product = :id_product AND shop.id_shop = :id_shop AND lang.id_lang = :id_lang AND product_shop.active = :active
