@@ -17,7 +17,7 @@ class Product extends _Model {
 			, tax_rules_group.name AS tax_rules_group
 			, product_lang.description, product_lang.description_short, product_lang.meta_description, product_lang.meta_keywords, product_lang.meta_title
 			, customer.username
-			, product_username.username AS product_username
+			/*, product_username.username AS product_username*/
 			, (SELECT product_file.product_file_id FROM offline_commerce_v1_2013.product_file WHERE product_file.product_id = product.id_product ORDER BY product_file.product_file_id ASC LIMIT 1) AS product_file_id
 			, IF(EXISTS(SELECT category_product.id_category_product FROM offline_commerce_v1_2013.category_product WHERE category_product.id_category = 1 AND category_product.id_product = product.id_product), 1, 0) AS is_new
 			, mm.posting_ids
@@ -47,8 +47,8 @@ class Product extends _Model {
 			LEFT JOIN offline_commerce_v1_2013.shop AS default_shop ON product.id_shop_default = default_shop.id_shop
 			LEFT JOIN offline_commerce_v1_2013.tax_rules_group ON product.id_tax_rules_group = tax_rules_group.id_tax_rules_group
 			LEFT JOIN offline_commerce_v1_2013.customer ON product.user_id = customer.user_id
-			LEFT JOIN dahliawolf_v1_2013.posting ON posting.product_id = mm.product_id
-			LEFT JOIN dahliawolf_v1_2013.user_username AS product_username ON posting.user_id = user_username.user_id
+			/*LEFT JOIN dahliawolf_v1_2013.posting ON posting.product_id = mm.product_id
+			LEFT JOIN dahliawolf_v1_2013.user_username AS product_username ON posting.user_id = user_username.user_id*/
 
 
         WHERE product.id_product = :id_product AND shop.id_shop = :id_shop AND lang.id_lang = :id_lang AND product_shop.active = :active
