@@ -12,17 +12,17 @@ function api_request($service, $calls, $return_array = false) {
 	if (!class_exists('Commerce_API', false)) {
 		require $_SERVER['DOCUMENT_ROOT'] . '/1-0/lib/php/Commerce_API.php';
 	}
-	
+
 	// Instantiate library helper
 	$api = new Commerce_API(API_KEY_DEVELOPER, PRIVATE_KEY_DEVELOPER);
-	
+
 	// Make request
 	$result = $api->rest_api_request($service, $calls);
-	
+
 	if (!$return_array) {
 		return $result;
 	}
-	
+
 	$decoded = json_decode($result, true);
 	if ($decoded) {
 		return $decoded;
@@ -31,6 +31,20 @@ function api_request($service, $calls, $return_array = false) {
 	return;
 }
 
+
+die();
+$calls = array(
+	'set_initial_user_id_from_posting_id' => array(
+		'posting_id' => 9530
+	)
+);
+$data = api_request('product', $calls, true);
+echo '<pre>';print_r($data);die();
+
+
+
+
+die();
 $items = '
 <a href="#create-invoice">// Create Invoice</a>
 ';

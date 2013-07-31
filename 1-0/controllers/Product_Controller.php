@@ -118,6 +118,33 @@ class Product_Controller extends _Controller {
 		return static::wrap_result(true, $data);
 	}
 
+	public function set_initial_user_id_from_posting_id($params = array()) {
+		$this->load('Product');
+
+		// Validations
+		$input_validations = array(
+			'posting_id' => array(
+				'label' => 'Posting ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+		);
+
+		$this->Validate->add_many($input_validations, $params, true);
+		$this->Validate->run();
+
+		$product = $this->Product->get_posting_product_user_id($params['posting_id']);
+
+		if (!empty($product)) {
+			if (empty($product['product_user_id'])) {
+				$this->Product->set_user_id($product['id_product'], $product['user_id']);
+			}
+		}
+
+		//return static::wrap_result(true, $data);
+	}
 }
 
 ?>

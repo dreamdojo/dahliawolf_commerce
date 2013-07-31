@@ -10,6 +10,7 @@ class Orders extends _Model {
 		, 'id_shop_group'
 		, 'id_shop'
 		, 'id_carrier'
+		, 'id_delivery'
 		, 'id_lang'
 		, 'id_customer'
 		, 'id_cart'
@@ -49,6 +50,50 @@ class Orders extends _Model {
 		, 'valid'
 		, 'date_add'
 		, 'date_upd'
+		, 'product_tax'
+		, 'shipping_tax'
+		, 'discount_tax'
+		, 'wrapping_tax'
+		, 'payment_status'
 	);
+
+	public function get_shipping_method($id_order) {
+		$query = '
+			SELECT delivery.name AS delivery
+				, carrier.name AS carrier
+			FROM orders
+				INNER JOIN delivery ON orders.id_delivery = delivery.id_delivery
+				INNER JOIN carrier ON delivery.id_carrier = carrier.id_carrier
+			WHERE orders.id_order = :id_order
+		';
+		$values = array(
+			':id_order' => $id_order
+		);
+
+		try {
+			$shipping_method = self::$dbs[$this->db_host][$this->db_name]->select_single($query, $values);
+
+			return $shipping_method;
+		} catch (Exception $e) {
+			self::$Exception_Helper->server_error_exception('Unable to get order payment details.');
+		}
+	}
+
+	/*public function get_points_spent($id_order) {
+		$query = '
+
+		';
+		$values = array(
+			':id_order' => $id_order
+		);
+
+		try {
+			$order = self::$dbs[$this->db_host][$this->db_name]->select_single($query, $values);
+
+			return $order;
+		} catch (Exception $e) {
+			self::$Exception_Helper->server_error_exception('Unable to get points spent.');
+		}
+	}*/
 }
 ?>

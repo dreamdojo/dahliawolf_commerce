@@ -120,9 +120,6 @@ class Carrier_Controller extends _Controller {
 		//$this->load('Config',  DB_API_HOST, DB_API_USER, DB_API_PASSWORD, DB_API_DATABASE );
         $this->load('Config', ADMIN_API_HOST, ADMIN_API_USER, ADMIN_API_PASSWORD, ADMIN_API_DATABASE);
 
-
-
-
 		$data = array();
 
 		$validate_names = array(
@@ -307,9 +304,9 @@ class Carrier_Controller extends _Controller {
 						}
 						else if ($carrier_class == 'UpsRate') {
 							// UpsRate->__construct($accessKey, $username, $password, $accountNumber, $shipFromZip, $useTestServer = false)
-							$this->carrier_rate_objects[$carrier_name] = new $carrier_class('5C8F7E11A450B510', 'companycheckout', 'Dev#1234', '552V7V', '91730', true);
+							$this->carrier_rate_objects[$carrier_name] = new $carrier_class('5C8F7E11A450B510', 'companycheckout', 'Dev#1234', '552V7V', $shop_address['postcode'], true);
 							// UpsRate->getRate($shipToZip,$service,$weight,$length,$width,$height)
-							$live_rate_options[$carrier_name] = $this->carrier_rate_objects[$carrier_name]->getRate('91730', '', 1, 1, 1, 1);
+							$live_rate_options[$carrier_name] = $this->carrier_rate_objects[$carrier_name]->getRate($user_address['address']['zip'], '', 1, 1, 1, 1);
 						}
 						else if ($carrier_class == 'UspsRate') {
 							// UspsRate->__construct($username)
@@ -329,6 +326,9 @@ class Carrier_Controller extends _Controller {
 							if ($carrier_class == 'FedexRate' || $carrier_class == 'UspsRate') {
 								if ($option['service'] == $carrier['code']) {
 									$carriers[$i]['price'] = $option['rate'];
+
+									// Set flag to let us know the live rate was returned (so we can filter out ones that didn't)
+									$carriers[$i]['live_rate'] = $option['rate'];
 								}
 							}
 							else if ($carrier_class == 'UpsRate') {
@@ -342,7 +342,9 @@ class Carrier_Controller extends _Controller {
 				}
 			}
 		}
-//echo '<pre>';print_r($live_rate_options);die();
+
+		// Filter out live rate options that didn't return a live rate
+		$carriers = $this->filter_failed_rates($carriers);
 
 		//usort($carriers, array($this, 'cmp_by_price'));
 		$this->array_sort_by_column($carriers, 'price');
@@ -362,6 +364,23 @@ class Carrier_Controller extends _Controller {
 	    }
 
 	    array_multisort($sort_col, $dir, $arr);
+	}
+
+	private function filter_failed_rates($carriers) {
+		$carriers_return = array();
+
+		foreach($carriers as $i => $carrier) {
+			if (!$carrier['is_live_rate']) {
+				array_push($carriers_return, $carrier);
+			}
+			else {
+				if (!empty($carrier['live_rate'])) {
+					array_push($carriers_return, $carrier);
+				}
+			}
+		}
+
+		return $carriers_return;
 	}
 }
 

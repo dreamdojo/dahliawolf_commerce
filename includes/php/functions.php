@@ -274,4 +274,22 @@ function getSecretKey() {
 	*/
 	return 'turtles-are-green';
 }
+
+function numbers_are_equal($a, $b) {
+	$a = (string)$a;
+	$b = (string)$b;
+	
+	$dec1 = (strpos($a, '.') !== false) ? (strlen(strstr($a,'.')) - 1) : 0;
+	
+	$dec2 = (strpos($b, '.') !== false) ? (strlen(strstr($b,'.')) - 1) : 0;
+	
+	$decimals = max($dec1, $dec2, 2);
+	
+	$a = number_format($a, $decimals, '.', '');
+	$b = number_format($b, $decimals, '.', '');
+	
+	$is_equal = ($a === $b) ? true : false;
+	
+	return $is_equal;
+}
 ?>

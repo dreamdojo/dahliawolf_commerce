@@ -1156,5 +1156,48 @@ class Product extends _Model {
 			self::$Exception_Helper->server_error_exception('Unable to update product quantity.');
 		}
 	}
+
+	public function set_user_id($id_product, $user_id) {
+		$query = '
+			UPDATE product
+			SET user_id = :user_id
+			WHERE id_product = :id_product
+				AND (user_id = 0 OR user_id IS NULL)
+		';
+		$values = array(
+			':id_product' => $id_product
+			, ':user_id' => $user_id
+		);
+
+		try {
+			$update = self::$dbs[$this->db_host][$this->db_name]->exec($query, $values);
+
+			return $update;
+		} catch (Exception $e) {
+			self::$Exception_Helper->server_error_exception('Unable to update product user_id.');
+		}
+	}
+
+	public function get_posting_product_user_id($posting_id) {
+		$query = '
+			SELECT product.id_product, product.user_id AS product_user_id
+				, posting.user_id
+			FROM product
+				INNER JOIN dahliawolf_v1_2013.posting_product ON product.id_product = posting_product.product_id
+				INNER JOIN dahliawolf_v1_2013.posting ON posting_product.posting_id = posting.posting_id
+			WHERE posting_product.posting_id = :posting_id
+		';
+		$values = array(
+			':posting_id' => $posting_id
+		);
+
+		try {
+			$product = self::$dbs[$this->db_host][$this->db_name]->select_single($query, $values);
+
+			return $product;
+		} catch (Exception $e) {
+			self::$Exception_Helper->server_error_exception('Unable to get posting product.');
+		}
+	}
 }
 ?>

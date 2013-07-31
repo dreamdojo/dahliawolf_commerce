@@ -62,8 +62,10 @@ class Cart_Controller extends _Controller {
 		$data['cart']['carrier'] = array();
 		$data['cart']['totals'] = array(
 			'products' => 0
+			, 'products_retail' => 0
 			, 'product_weight' => 0
 			, 'product_tax' => 0
+			, 'products_retail_tax' => 0
 			, 'discounts' => 0
 			, 'discount_tax' => 0
 			, 'shipping' => 0
@@ -92,14 +94,19 @@ class Cart_Controller extends _Controller {
 				if (!empty($data['products'][$i]['product_info'])) {
 					$product_price = ($data['products'][$i]['product_info']['on_sale'] == '1') ? $data['products'][$i]['product_info']['sale_price'] : $data['products'][$i]['product_info']['price'];
 					$data['cart']['totals']['products'] += ($product_price * $cart_product['quantity']);
+
+					if ($data['products'][$i]['product_info']['on_sale'] != '1') {
+						$data['cart']['totals']['products_retail'] += ($product_price * $cart_product['quantity']);
+					}
+
 					$data['cart']['totals']['product_weight'] += ($data['products'][$i]['product_info']['weight'] * $cart_product['quantity']);
 				}
 			}
 		}
 
 		// Calculate Discounts
-		$remaining_subtotal = $data['cart']['totals']['products'];
-		$remaining_product_tax = $data['cart']['totals']['product_tax'];
+		$remaining_subtotal = $data['cart']['totals']['products_retail']; //$data['cart']['totals']['products'];
+		$remaining_product_tax = $data['cart']['totals']['products_retail_tax'];//$data['cart']['totals']['product_tax'];
 
 		if (!empty($data['discounts']) && is_array($data['discounts'])) {
 			foreach ($data['discounts'] as $i => $discount) {
@@ -142,7 +149,7 @@ class Cart_Controller extends _Controller {
 						}
 					}
 					else if ($remaining_subtotal > 0) {
-						$total_discount_amount = (($discount['reduction_percent'] / 100) * ($data['cart']['totals']['products']));
+						$total_discount_amount = (($discount['reduction_percent'] / 100) * ($data['cart']['totals']['products_retail']));
 						$data['discounts'][$i]['discount_amount'] = min($total_discount_amount, $remaining_subtotal);
 						$remaining_subtotal -= $data['discounts'][$i]['discount_amount'];
 					}
@@ -187,6 +194,10 @@ class Cart_Controller extends _Controller {
 		);
 		*/
 
+		// Points user will earn
+		$data['points'] = array();
+		$data['points']['will_earn'] = $this->get_points_will_earn($data['cart']['totals']['products_retail'] - $data['cart']['totals']['discounts']);
+
 		return static::wrap_result(true, $data);
 	}
 
@@ -200,7 +211,7 @@ class Cart_Controller extends _Controller {
 		$this->load('Tax_Rule');
 		$this->load('Cart_Rule');
 		$this->load('Dw_User');
-		
+
 		$data = array();
 		$error = NULL;
 		$has_shipping_address = false;
@@ -264,16 +275,18 @@ class Cart_Controller extends _Controller {
 
 		if (!empty($data['cart'])) {
 			// Add membership discount
-			
+
 			$this->add_membership_discount($params['user_id'], $data['cart']['id_cart'], $params['id_lang']);
-			
+
 			///////////////////////////
-			
+
 			$data['cart']['carrier'] = array();
 			$data['cart']['totals'] = array(
 				'products' => 0
+				, 'products_retail' => 0
 				, 'product_weight' => 0
 				, 'product_tax' => 0
+				, 'products_retail_tax' => 0
 				, 'discounts' => 0
 				, 'discount_tax' => 0
 				, 'shipping' => 0
@@ -330,18 +343,27 @@ class Cart_Controller extends _Controller {
 					if ($has_shipping_address) {
 						$data['products'][$i]['tax_info'] = $this->Tax_Rule->get_tax_info($data['products'][$i]['product_info']['id_tax_rules_group'], $id_country, $id_state, $zip, $product_price, $data['products'][$i]['quantity']);
 						$data['cart']['totals']['product_tax'] += $data['products'][$i]['tax_info']['total_amount'];
+
+						if ($data['products'][$i]['product_info']['on_sale'] != '1') {
+							$data['cart']['totals']['products_retail_tax'] += $data['products'][$i]['tax_info']['total_amount'];
+						}
 					}
 
 					// Update cart totals
 					$data['cart']['totals']['products'] += ($product_price * $cart_product['quantity']);
+
+					if ($data['products'][$i]['product_info']['on_sale'] != '1') {
+						$data['cart']['totals']['products_retail'] += ($product_price * $cart_product['quantity']);
+					}
+
 					$data['cart']['totals']['product_weight'] += ($data['products'][$i]['product_info']['weight'] * $cart_product['quantity']);
 				}
 			}
 
 			// Calculate Discounts
 			$data['discounts'] = $this->Cart_Cart_Rule->get_cart_discounts($data['cart']['id_cart'], $params['id_lang']);
-			$remaining_subtotal = $data['cart']['totals']['products'];
-			$remaining_product_tax = $data['cart']['totals']['product_tax'];
+			$remaining_subtotal = $data['cart']['totals']['products_retail'];//$data['cart']['totals']['products'];
+			$remaining_product_tax = $data['cart']['totals']['products_retail_tax']; //$data['cart']['totals']['product_tax'];
 
 			if (!empty($data['discounts'])) {
 				foreach ($data['discounts'] as $i => $discount) {
@@ -376,7 +398,7 @@ class Cart_Controller extends _Controller {
 							}
 						}
 						else if ($remaining_subtotal > 0) {
-							$total_discount_amount = (($discount['reduction_percent'] / 100) * ($data['cart']['totals']['products']));
+							$total_discount_amount = (($discount['reduction_percent'] / 100) * ($data['cart']['totals']['products_retail']));
 							$data['discounts'][$i]['discount_amount'] = min($total_discount_amount, $remaining_subtotal);
 							$remaining_subtotal -= $data['discounts'][$i]['discount_amount'];
 						}
@@ -443,6 +465,14 @@ class Cart_Controller extends _Controller {
 			if (empty($data['products'])) { // if no products, set total to 0
 				$data['cart']['totals']['grand_total'] = 0;
 			}
+
+			// Points user will earn
+			$data['points'] = array();
+			$data['points']['will_earn'] = $this->get_points_will_earn($data['cart']['totals']['products_retail'] - $data['cart']['totals']['discounts']);
+			// User points
+			$data['points']['user'] = $this->get_user_points($params['user_id']);
+			// Point spend levels
+			$data['points']['levels'] = $this->get_eligible_levels($data['points']['user']);
 		}
 
 		return static::wrap_result(true, $data);
@@ -495,11 +525,11 @@ class Cart_Controller extends _Controller {
 		if (empty($new_discount)) { // Not found
 			_Model::$Exception_Helper->request_failed_exception('Invalid discount code.');
 		}
-		
+
 		$membership_discounts = $this->Cart_Rule->get_membership_discounts();
 		$membership_discounts = rows_to_groups($membership_discounts, 'id_cart_rule');
 		$membership_discount_ids = array_keys($membership_discounts);
-		
+
 		if (in_array($new_discount['id_cart_rule'], $membership_discount_ids)) {
 			_Model::$Exception_Helper->request_failed_exception('Invalid discount code.');
 		}
@@ -1257,15 +1287,15 @@ class Cart_Controller extends _Controller {
 
 		// Get discount
 		$new_discount = $this->Cart_Rule->get_cart_rule($params['code'], $params['id_lang']);
-		
+
 		if (empty($new_discount)) { // Not found
 			_Model::$Exception_Helper->request_failed_exception('Invalid discount code.');
 		}
-		
+
 		$membership_discounts = $this->Cart_Rule->get_membership_discounts();
 		$membership_discounts = rows_to_groups($membership_discounts, 'id_cart_rule');
 		$membership_discount_ids = array_keys($membership_discounts);
-		
+
 		if (in_array($new_discount['id_cart_rule'], $membership_discount_ids)) {
 			_Model::$Exception_Helper->request_failed_exception('Invalid discount code.');
 		}
@@ -1578,7 +1608,7 @@ class Cart_Controller extends _Controller {
 
 		return static::wrap_result(true, $data);
 	}
-	
+
 	public function begin_paypal_purchase($params = array()) {
 		$this->load('Cart');
 
@@ -1670,7 +1700,7 @@ class Cart_Controller extends _Controller {
 		if (empty($cart)) {
 			_Model::$Exception_Helper->request_failed_exception('Cart not found.');
 		}
-		
+
 		$calls = array(
 			'begin_paypal_purchase' => array(
 				'purchase_info' => array(
@@ -1682,48 +1712,48 @@ class Cart_Controller extends _Controller {
 				, 'cancel_url' => $params['cancel_url']
 			)
 		);
-		
+
 		$API = new API(API_KEY_DEVELOPER, PRIVATE_KEY_DEVELOPER);
 		$result = $API->rest_api_request('payment', $calls);
 		$result_decoded = json_decode($result, true);
-		
+
 		$api_errors = api_errors_to_array($result_decoded);
 
 		if (!empty($api_errors)) {
 			return static::wrap_result(false, NULL, _Model::$Status_Code->get_status_code_request_failed(), $api_errors);
 		}
-		
+
 		$data = $result_decoded['data']['begin_paypal_purchase']['data'];
-		
+
 		return static::wrap_result(true, $data);
 	}
-	
+
 	public function add_membership_discount($user_id, $id_cart, $id_lang) {
 		$this->load('Cart_Rule');
 		$this->load('Dw_User');
 		$this->load('Cart_Cart_Rule');
-		
+
 		// Get membership discounts
 		$membership_discounts = $this->Cart_Rule->get_membership_discounts();
 		$membership_discounts = rows_to_groups($membership_discounts, 'id_cart_rule');
 		// Get user membership level
 		$membership_level = $this->Dw_User->get_membership_level($user_id);
-		
+
 		if (!empty($membership_level) && !empty($membership_discounts[$membership_level['commerce_id_cart_rule']])) {
 			$membership_discount = $membership_discounts[$membership_level['commerce_id_cart_rule']][0];
 			$cart_discounts = $this->Cart_Cart_Rule->get_cart_discounts($id_cart, $id_lang);
-			
+
 			$found_membership_discount = false;
-			
+
 			if (!empty($cart_discounts)) {
 				$membership_discount_ids = array_keys($membership_discounts);
-				
+
 				foreach ($cart_discounts as $cart_discount) {
 					if (in_array($cart_discount['id_cart_rule'], $membership_discount_ids)) {
 						if ($found_membership_discount) { // delete row because it is duplicate
 							$this->Cart_Cart_Rule->delete_by_primary_key($cart_discount['id_cart_cart_rule']);
 						}
-						
+
 						$found_membership_discount = true;
 						// Update row with current membership discount id
 						$this->Cart_Cart_Rule->save(
@@ -1733,10 +1763,10 @@ class Cart_Controller extends _Controller {
 							)
 						);
 					}
-					
+
 				}
 			}
-			
+
 			// if not there, add discount
 			if (!$found_membership_discount) {
 				$this->Cart_Cart_Rule->save(
@@ -1746,10 +1776,210 @@ class Cart_Controller extends _Controller {
 					)
 				);
 			}
+
+		}
+	}
+	
+	/*
+	 function add_membership_discount($user_id, $cart, $id_lang) {
+		$this->load('Cart_Rule');
+		$this->load('Dw_User');
+		$this->load('Cart_Cart_Rule');
+
+		// Get membership discounts
+		$membership_discounts = $this->Cart_Rule->get_membership_discounts();
+		$membership_discounts = rows_to_groups($membership_discounts, 'id_cart_rule');
+		// Get user membership level
+		$membership_level = $this->Dw_User->get_membership_level($user_id);
+		
+		// Get current discounts
+		$cart_discounts = $this->Cart_Cart_Rule->get_cart_discounts($cart['id_cart'], $id_lang);
+		
+		// Remove if not applicable
+		// Discount no longer exists
+		if (isset($cart['user_id_cart_rule']) 
+			&& !empty($cart['user_id_cart_rule']) 
+			&& empty($membership_discounts[$cart['user_id_cart_rule']])
+			&& !empty($cart_discounts)
+		) {
+			foreach ($cart_discounts as $cart_discount) {
+				if ($cart_discount['id_cart_rule'] == $cart['user_id_cart_rule']) {
+					$this->Cart_Cart_Rule->delete_by_primary_key($cart_discount['id_cart_cart_rule']);
+				}
+			}
 			
+			return;
+		}
+		
+		// Discount has been removed
+		if (!isset($cart['user_id_cart_rule']) 
+			|| empty($cart['user_id_cart_rule'])
+		) {
+			if (!empty($cart_discounts)) {
+				foreach ($cart_discounts as $cart_discount) {
+					if (in_array($cart_discount['id_cart_rule'], $membership_discount_ids)) {
+						$this->Cart_Cart_Rule->delete_by_primary_key($cart_discount['id_cart_cart_rule']);
+					}
+				}
+			}
+			return;
+		}
+
+		if (!empty($membership_level) 
+			&& isset($cart['user_id_cart_rule']) 
+			&& !empty($cart['user_id_cart_rule']) 
+			&& !empty($membership_discounts[$cart['user_id_cart_rule']])
+		) {
+			$membership_discount = $membership_discounts[$cart['user_id_cart_rule']][0];
+			
+			$found_membership_discount = false;
+
+			if (!empty($cart_discounts)) {
+				$membership_discount_ids = array_keys($membership_discounts);
+
+				foreach ($cart_discounts as $cart_discount) {
+					if (in_array($cart_discount['id_cart_rule'], $membership_discount_ids)) {
+						if ($found_membership_discount) { // delete row because it is duplicate
+							$this->Cart_Cart_Rule->delete_by_primary_key($cart_discount['id_cart_cart_rule']);
+						}
+
+						$found_membership_discount = true;
+						// Update row with current membership discount id
+						$this->Cart_Cart_Rule->save(
+							array(
+								'id_cart_cart_rule' => $cart_discount['id_cart_cart_rule']
+								, 'id_cart_rule' => $cart['user_id_cart_rule']
+							)
+						);
+					}
+				}
+			}
+
+			// if not there, add discount
+			if (!$found_membership_discount) {
+				$this->Cart_Cart_Rule->save(
+					array(
+						'id_cart' => $cart['id_cart']
+						, 'id_cart_rule' => $cart['user_id_cart_rule']
+					)
+				);
+			}
+
+		}
+		
+		return;
+	}
+	*/
+	
+	private function get_user_points($user_id) {
+		$this->load('Dw_User_Point', DW_API_HOST, DW_API_USER, DW_API_PASSWORD, DW_API_DATABASE);
+
+		$points = $this->Dw_User_Point->get_user_points($user_id);
+
+		return $points['points'];
+	}
+
+	private function get_points_will_earn($amount) {
+		$this->load('Dw_Point', DW_API_HOST, DW_API_USER, DW_API_PASSWORD, DW_API_DATABASE);
+
+		$dollar_point_value = $this->Dw_Point->get_buy_points_amount();
+
+		$points_will_earn = floor($amount * $dollar_point_value);
+
+		return $points_will_earn;
+	}
+
+	private function get_eligible_levels($points) {
+		$this->load('Dw_Membership_Level', DW_API_HOST, DW_API_USER, DW_API_PASSWORD, DW_API_DATABASE);
+
+		$levels = $this->Dw_Membership_Level->get_eligible_levels($points);
+
+		return $levels;
+	}
+
+	public function set_user_cart_rule($params = array()) {
+		$this->load('Cart');
+		$this->load('Dw_Membership_Level', DW_API_HOST, DW_API_USER, DW_API_PASSWORD, DW_API_DATABASE);
+
+		// Validations
+		$input_validations = array(
+			'user_id' => array(
+				'label' => 'User ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+			, 'id_cart' => array(
+				'label' => 'Card ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+			, 'id_cart_rule' => array(
+				'label' => 'Cart Rule ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+		);
+		$this->Validate->add_many($input_validations, $params, true);
+		$this->Validate->run();
+
+		// Check that user is eligible
+		$user_points = $this->get_user_points($params['user_id']);
+		$level = $this->Dw_Membership_Level->check_cart_rule_eligibility($params['id_cart_rule'], $user_points);
+
+		// If eligible, then set user_id_cart_rule
+		if (!empty($level)) {
+			$save = $this->Cart->save(
+				array(
+					'id_cart' => $params['id_cart']
+					, 'user_id_cart_rule' => $params['id_cart_rule']
+				)
+			);
+
+			return $this->wrap_result(true, $save);
+		}
+		else {
+			return $this->remove_user_cart_rule($params);
 		}
 	}
 
+	public function remove_user_cart_rule($params = array()) {
+		$this->load('Cart');
+
+		// Validations
+		$input_validations = array(
+			'user_id' => array(
+				'label' => 'User ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+			, 'id_cart' => array(
+				'label' => 'Card ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+		);
+		$this->Validate->add_many($input_validations, $params, true);
+		$this->Validate->run();
+
+		$save = $this->Cart->save(
+			array(
+				'id_cart' => $params['id_cart']
+				, 'user_id_cart_rule' => NULL
+			)
+		);
+
+		return $this->wrap_result(true, $save);
+	}
 }
 
 ?>

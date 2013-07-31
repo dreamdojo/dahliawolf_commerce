@@ -49,15 +49,22 @@ class Tax_Rule extends _Model {
 		if (!empty($tax_rules)) {
 			if ($tax_rules[0]['behavior'] == '1') {
 				$tax_amount = $product_price * ($tax_rules[0]['rate'] / 100);
-				$tax_amount = $this->truncateNum($tax_amount);
-				$unit_amount = $product_price + $tax_amount;
-				$total_product = $unit_amount * $product_quantity;
+				///$tax_amount = $this->truncateNum($tax_amount);
+				$tax_amount = round_up($tax_amount, 2);
+				//$unit_amount = $product_price + $tax_amount;
+				//$total_product = $unit_amount * $product_quantity;
+				
+				$unit_tax_amount = $tax_amount;
+				$total_product_tax = ($product_price * $product_quantity) * ($tax_rules[0]['rate'] / 100);
+				$total_product_tax = round_up($total_product_tax, 2);
 				
 				$tax_info['tax_name'] = $tax_rules[0]['tax_name'];
 				$tax_info['rate'] = $tax_rules[0]['rate'];
 				$tax_info['id_tax'] = $tax_rules[0]['id_tax'];
-				$tax_info['unit_amount'] = $unit_amount;
-				$tax_info['total_amount'] = $total_product;
+				$tax_info['unit_amount'] = $unit_tax_amount;
+				$tax_info['total_amount'] = $total_product_tax;
+				$tax_info['product_price'] = $product_price;
+				$tax_info['product_quantity'] = $product_quantity;
 			}
 		}
 		

@@ -158,6 +158,19 @@ class Orders_Controller extends _Controller {
 			_Model::$Exception_Helper->request_failed_exception('Customer not found.');
 		}
 
+		// Get billing address for avs
+		$Address_Controller = new Address_Controller();
+		$billing_address_info = $Address_Controller->get_hq_user_address_info(
+			array(
+				'user_id' => $params['user_id']
+				, 'address_id' => $params['billing_address_id']
+			)
+		);
+
+		if (empty($billing_address_info)) {
+			_Model::$Exception_Helper->request_failed_exception('Billing address not found.');
+		}
+
 		// Get cart
 		$Cart_Controller = new Cart_Controller();
 		$cart_result = $Cart_Controller->get_cart_from_db(
@@ -180,8 +193,9 @@ class Orders_Controller extends _Controller {
 			_Model::$Exception_Helper->request_failed_exception('Cart is empty.');
 		}
 		// User may have updated cart in other tab
-		else if ($params['payment_info']['amount'] != $cart['cart']['totals']['grand_total']) {
-			_Model::$Exception_Helper->request_failed_exception('Cart total does not match payment total.');
+		//else if (($params['payment_info']['amount'] + 0) != ($cart['cart']['totals']['grand_total'] + 0)) {
+		else if (!numbers_are_equal($params['payment_info']['amount'], $cart['cart']['totals']['grand_total'])) {
+			_Model::$Exception_Helper->request_failed_exception('Cart total does not match payment total. Payment amount: ' . $var);
 		}
 		else if (empty($cart['cart']['carrier'])) {
 			_Model::$Exception_Helper->request_failed_exception('Invalid Carrier.');
@@ -190,7 +204,7 @@ class Orders_Controller extends _Controller {
 		// Process Payment
 		$payment_success = false;
 		$transaction_id = NULL;
-		$authorization_id = NULL;
+		$authorization_transaction_id = NULL;
 
 		if ($cc_payment) {
 			$calls = array(
@@ -202,27 +216,34 @@ class Orders_Controller extends _Controller {
 					, 'exp_year' => $params['payment_info']['cc_exp_year']
 					, 'cvv' => $params['payment_info']['cc_cvv']
 					, 'description' => !empty($params['payment_info']['description']) ? $params['payment_info']['description'] : ''
+					, 'address' => array(
+						"first_name" => $billing_address_info['address']['first_name'],
+						"last_name" => $billing_address_info['address']['last_name'],
+						"street" => $billing_address_info['address']['street'],
+						"street_2" => $billing_address_info['address']['street_2'],
+						"city" => $billing_address_info['address']['city'],
+						"state"	=> $billing_address_info['address']['state'],
+						"zip" => $billing_address_info['address']['zip'],
+					)
 				)
 			);
 
 			$API = new API(API_KEY_DEVELOPER, PRIVATE_KEY_DEVELOPER);
 			$cc_result = $API->rest_api_request('payment', $calls);
 			$cc_result_decoded = json_decode($cc_result, true);
-
 			if ($cc_result_decoded == '') {
 				_Model::$Exception_Helper->request_failed_exception($cc_result);
 			}
-			else if (!$cc_result_decoded['success']) {
-				_Model::$Exception_Helper->request_failed_exception('Process Payment api request failed.');
-			}
-			else if (!$cc_result_decoded['data']['process_credit_card']['success'] || empty($cc_result_decoded['data']['process_credit_card']['data'])) {
-				_Model::$Exception_Helper->request_failed_exception('Process Payment api request failed.');
+			$api_errors = api_errors_to_array($cc_result_decoded);
+
+			if (!empty($api_errors)) {
+				return static::wrap_result(false, NULL, _Model::$Status_Code->get_status_code_request_failed(), $api_errors);
 			}
 
 			if ($cc_result_decoded['data']['process_credit_card']['data']['approved']) { // Payment success
 				$payment_success = true;
-				if($cc_result_decoded['data']['process_credit_card']['data']['is_authorization']) {
-					$authorization_id = $cc_result_decoded['data']['process_credit_card']['data']['authorization_code'];
+				if ($cc_result_decoded['data']['process_credit_card']['data']['is_authorization']) {
+					$authorization_transaction_id = $cc_result_decoded['data']['process_credit_card']['data']['transaction_id'];
 					$is_authorization = true;
 				}
 				else {
@@ -268,8 +289,8 @@ class Orders_Controller extends _Controller {
 
 			$payment_success = true;
 
-			if($result_decoded['data']['complete_paypal_purchase']['data']['is_authorization']) {
-				$authorization_id = $result_decoded['data']['complete_paypal_purchase']['data']['payment_details']['PAYMENTINFO_0_TRANSACTIONID'];
+			if ($result_decoded['data']['complete_paypal_purchase']['data']['is_authorization']) {
+				$authorization_transaction_id = $result_decoded['data']['complete_paypal_purchase']['data']['payment_details']['PAYMENTINFO_0_TRANSACTIONID'];
 				$is_authorization = true;
 			}
 			else {
@@ -323,6 +344,11 @@ class Orders_Controller extends _Controller {
 			, 'total_wrapping_tax_incl' => $total_wrapping_tax_incl
 			, 'total_wrapping_tax_excl' => $total_wrapping_tax_excl
 			, 'date_add' => $now
+			, 'product_tax' => is_numeric($cart['cart']['totals']['product_tax']) ? $cart['cart']['totals']['product_tax'] : 0
+			, 'shipping_tax' => is_numeric($cart['cart']['totals']['shipping_tax']) ? $cart['cart']['totals']['shipping_tax'] : 0
+			, 'discount_tax' => is_numeric($cart['cart']['totals']['discount_tax']) ? $cart['cart']['totals']['discount_tax'] : 0
+			, 'wrapping_tax' => is_numeric($cart['cart']['totals']['wrapping_tax']) ? $cart['cart']['totals']['wrapping_tax'] : 0
+			, 'payment_status' => $is_authorization ? 'Authorized' : 'Paid'
 		);
 
 		$data['id_order'] = $this->Orders->save($order_data);
@@ -419,8 +445,9 @@ class Orders_Controller extends _Controller {
 			, 'amount' => $is_authorization ? NULL : $cart['cart']['totals']['grand_total']
 			, 'transaction_id' => $is_authorization ? NULL : $transaction_id
 			, 'amount_authorized' => $is_authorization ? $cart['cart']['totals']['grand_total'] : NULL
-			, 'authorization_id' => $is_authorization ? $authorization_id : NULL
+			, 'authorization_transaction_id' => $is_authorization ? $authorization_transaction_id : NULL
 			, 'date_add' => $now
+			, 'card_number' => $cc_payment ? substr($params['payment_info']['cc_number'], -4) : NULL
 		);
 
 		$this->Order_Payment->save($order_payment_data);
@@ -446,9 +473,9 @@ class Orders_Controller extends _Controller {
 		}
 
 		// Send email to user
-		$this->load('Config');
+		$this->load('Config', ADMIN_API_HOST, ADMIN_API_USER, ADMIN_API_PASSWORD, ADMIN_API_DATABASE);
 		$email_domain = $_SERVER['HTTP_REFERER'];
-		$order_email_prefix = $this->Config->get_value('Orders Email Prefix');
+		$order_email_prefix = $this->Config->get_value('Orders From Email Prefix');
 		$from_email = $order_email_prefix . '@' . $email_domain;
 
 		$subject = 'Order Confirmation';
@@ -469,6 +496,9 @@ class Orders_Controller extends _Controller {
 
 		$Email_Template_Helper = new Email_Template_Helper();
 		$email_results = $Email_Template_Helper->sendEmail('order-confirmation', $custom_variables, $template_variables, $email_domain, $from_email, $customer['firstname'] . ' ' . $customer['lastname'], $customer['email'], $subject, $from_email);
+
+		// Send email to staff
+		//$email_results = $Email_Template_Helper->sendEmail('order-confirmation', $custom_variables, $template_variables, $email_domain, $from_email, $from_email, $from_email, $subject, $from_email);
 
 		// Send email to product users
 		foreach ($cart['products'] as $i => $product) {
@@ -499,16 +529,28 @@ class Orders_Controller extends _Controller {
 			}
 		}
 
+		// Use points toward purchase
+		$this->load('Dw_User_Point', DW_API_HOST, DW_API_USER, DW_API_PASSWORD, DW_API_DATABASE);
+		/*if (!empty($cart['cart']['points'])) {
+			$points_spent = array(
+				'user_id' => $params['user_id']
+				, 'point_id' => 11
+				, 'points' => -1 * $cart['cart']['points']
+				, 'id_order' => $data['id_order']
+				, 'note' => 'Points spent toward purchase'
+				);
+			$this->Dw_User_Point->save($points_spent);
+		}*/
+
 		// Credit points
 		// Point value * order total
-		$this->load('Dw_Point', DW_API_HOST, DW_API_USER, DW_API_PASSWORD, DW_API_DATABASE);
-		$this->load('Dw_User_Point', DW_API_HOST, DW_API_USER, DW_API_PASSWORD, DW_API_DATABASE);
+		/*$this->load('Dw_Point', DW_API_HOST, DW_API_USER, DW_API_PASSWORD, DW_API_DATABASE);
 		$point_value = $this->Dw_Point->get_buy_points_amount();
-		$points = floor($point_value * $cart['cart']['totals']['grand_total']);
+		$points = floor($point_value * $cart['cart']['totals']['grand_total']);*/
 		$user_point_data = array(
 			'user_id' => $params['user_id']
 			, 'point_id' => 11
-			, 'points' => $points
+			, 'points' => $cart['points']['will_earn']
 			, 'id_order' => $data['id_order']
 		);
 		$this->Dw_User_Point->save($user_point_data);
@@ -679,7 +721,10 @@ class Orders_Controller extends _Controller {
 		$this->load('Order_Payment');
 		$this->load('Order_Detail');
 		$this->load('Order_Detail_Tax');
+		$this->load('Order_Cart_Rule');
 		$this->load('Product');
+		$this->load('Address', ADMIN_API_HOST, ADMIN_API_USER, ADMIN_API_PASSWORD, ADMIN_API_DATABASE);
+		$this->load('Dw_User_Point', DW_API_HOST, DW_API_USER, DW_API_PASSWORD, DW_API_DATABASE);
 
 		// Validations
 		$input_validations = array(
@@ -741,12 +786,355 @@ class Orders_Controller extends _Controller {
 		// Get products
 		$order['products'] = $this->Product->get_order_products($params['id_order'], $params['id_shop'], $params['id_lang']);
 
+		// Get billing & shipping addresses
+		$order['addresses'] = array();
+		$order['addresses']['billing'] = $this->Address->get_row(
+			array(
+				'address_id' => $order['id_address_invoice']
+			)
+		);
+		$order['addresses']['shipping'] = $this->Address->get_row(
+			array(
+				'address_id' => $order['id_address_delivery']
+			)
+		);
+
+		// Payment method
+		$order['order_payment'] = $this->Order_Payment->get_order_payment($params['id_order']);
+
+		// Shipping method
+		$order['shipping_method'] = $this->Orders->get_shipping_method($params['id_order']);
+
+		// Discounts
+		$order['discounts'] = $this->Order_Cart_Rule->get_rows(
+			array(
+				'id_order' => $params['id_order']
+			)
+		);
+
+		// Points spent/earned
+		$order['points'] = array();
+		$order['points']['earned'] = $this->Dw_User_Point->get_order_points_earned($params['id_order']);
+
+		// Shipments
+
+
 		$data = $order;
 
 		return static::wrap_result(true, $data);
 	}
 
+	public function capture_order_payment($params) {
+		$this->load('Orders');
+		$this->load('Order_Invoice');
+		$this->load('Order_Payment');
+		$this->load('Payment_Method', ADMIN_API_HOST, ADMIN_API_USER, ADMIN_API_PASSWORD, ADMIN_API_DATABASE);
+
+		// Validations
+		$input_validations = array(
+			'id_order' => array(
+				'label' => 'Order ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+		);
+		$this->Validate->add_many($input_validations, $params, true);
+		$this->Validate->run();
+
+		$cc_payment = false;
+		$paypal_payment = false;
+
+		$order = $this->Orders->get_row(
+			array('id_order' => $params['id_order'])
+		);
+
+		if (empty($order)) {
+			_Model::$Exception_Helper->request_failed_exception('Order could not be found.');
+		}
+
+		$order_invoice = $this->Order_Invoice->get_row(
+			array('id_order' => $order['id_order'])
+		);
+
+		$order_payment = $this->Order_Payment->get_row(
+			array('id_order' => $order['id_order'])
+		);
+
+		if (empty($order_payment)) {
+			_Model::$Exception_Helper->request_failed_exception('Order Payment could not be found.');
+		}
+		else if ($order_payment['authorization_transaction_id'] == '') {
+			_Model::$Exception_Helper->request_failed_exception('Authorization Transaction ID is not set.');
+		}
+		else if ($order_payment['amount_authorized'] == '') {
+			_Model::$Exception_Helper->request_failed_exception('Authorization amount is not set.');
+		}
+
+		if (!empty($order_payment['payment_method_id'])) {
+			// Payment method
+			$pm = $this->Payment_Method->get_row(
+				array(
+					'payment_method_id' => $order_payment['payment_method_id']
+				)
+			);
+
+			if (empty($pm)) {
+				_Model::$Exception_Helper->request_failed_exception('Payment method not found.');
+			}
+
+			if ($pm['name'] == 'Credit Card') {
+				$cc_payment = true;
+			}
+			else if ($pm['name'] == 'PayPal') {
+				$paypal_payment = true;
+			}
+		}
+
+		$success = false;
+		$transaction_id = NULL;
+		if ($cc_payment) {
+			$calls = array(
+				'capture_credit_card' => array(
+					'authorization_transaction_id' => $order_payment['authorization_transaction_id']
+					, 'amount' => $order_payment['amount_authorized']
+				)
+			);
+
+			$API = new API(API_KEY_DEVELOPER, PRIVATE_KEY_DEVELOPER);
+			$cc_result = $API->rest_api_request('payment', $calls);
+			$cc_result_decoded = json_decode($cc_result, true);
+			if ($cc_result_decoded == '') {
+				_Model::$Exception_Helper->request_failed_exception($cc_result);
+			}
+			$api_errors = api_errors_to_array($cc_result_decoded);
+
+			if (!empty($api_errors)) {
+				return static::wrap_result(false, NULL, _Model::$Status_Code->get_status_code_request_failed(), $api_errors);
+			}
+
+			if ($cc_result_decoded['data']['capture_credit_card']['data']['transaction_id'] != '' && $cc_result_decoded['data']['capture_credit_card']['data']['transaction_id'] != '0') {
+				$transaction_id = $cc_result_decoded['data']['capture_credit_card']['data']['transaction_id'];
+				$success = true;
+			}
+			else { // failed (already captured)
+				_Model::$Exception_Helper->request_failed_exception($cc_result_decoded['data']['capture_credit_card']['data']['response_reason_text']);
+			}
+
+			$data = $cc_result_decoded['data']['capture_credit_card']['data'];
+
+		}
+		else if ($paypal_payment) { // Process Paypal
+			$calls = array(
+				'capture_paypal_payment' => array(
+					'authorization_transaction_id' => $order_payment['authorization_transaction_id']
+					, 'amount' => $order_payment['amount_authorized']
+				)
+			);
+
+			$API = new API(API_KEY_DEVELOPER, PRIVATE_KEY_DEVELOPER);
+			$result = $API->rest_api_request('payment', $calls);
+			$result_decoded = json_decode($result, true);
+
+			$api_errors = api_errors_to_array($result_decoded);
+
+			if (!empty($api_errors)) {
+				return static::wrap_result(false, NULL, _Model::$Status_Code->get_status_code_request_failed(), $api_errors);
+			}
+
+			$transaction_id = $result_decoded['data']['capture_paypal_payment']['data']['TRANSACTIONID'];
+			$data = $result_decoded['data']['capture_paypal_payment']['data'];
+			$success = true;
+		}
+
+		if ($success) {
+			$tax_excluded = $order_payment['amount_authorized'] - ($order['product_tax'] + $order['shipping_tax'] + $order['discount_tax'] + $order['wrapping_tax']);
+			$this->Orders->save(
+				array(
+					'id_order' => $order['id_order']
+					, 'total_paid' => $order_payment['amount_authorized']
+					, 'total_paid_tax_incl' => $order_payment['amount_authorized']
+					, 'total_paid_tax_excl' => $tax_excluded
+					, 'payment_status' => 'Paid'
+				)
+			);
+
+			if (!empty($order_invoice)) {
+				$this->Order_Invoice->save(
+					array(
+						'id_order_invoice' => $order_invoice['id_order_invoice']
+						, 'total_paid_tax_excl' => $tax_excluded
+						, 'total_paid_tax_incl' => $order_payment['amount_authorized']
+					)
+				);
+			}
+
+			$this->Order_Payment->save(
+				array(
+					'id_order_payment' => $order_payment['id_order_payment']
+					, 'amount' => $order_payment['amount_authorized']
+					, 'transaction_id' => $transaction_id
+				)
+			);
+		}
+
+		return static::wrap_result(true, $data);
+
+	}
+
 	public function void_order($params) {
+		$this->load('Orders');
+		$this->load('Order_Invoice');
+		$this->load('Order_Payment');
+		$this->load('Payment_Method', ADMIN_API_HOST, ADMIN_API_USER, ADMIN_API_PASSWORD, ADMIN_API_DATABASE);
+
+		// Validations
+		$input_validations = array(
+			'id_order' => array(
+				'label' => 'Order ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+		);
+		$this->Validate->add_many($input_validations, $params, true);
+		$this->Validate->run();
+
+		$cc_payment = false;
+		$paypal_payment = false;
+
+		$order = $this->Orders->get_row(
+			array('id_order' => $params['id_order'])
+		);
+
+		if (empty($order)) {
+			_Model::$Exception_Helper->request_failed_exception('Order could not be found.');
+		}
+
+		$order_invoice = $this->Order_Invoice->get_row(
+			array('id_order' => $order['id_order'])
+		);
+
+		$order_payment = $this->Order_Payment->get_row(
+			array('id_order' => $order['id_order'])
+		);
+
+		if (empty($order_payment)) {
+			_Model::$Exception_Helper->request_failed_exception('Order Payment could not be found.');
+		}
+		else if ($order_payment['authorization_transaction_id'] == '') {
+			_Model::$Exception_Helper->request_failed_exception('Authorization Transaction ID is not set.');
+		}
+		else if ($order_payment['amount_authorized'] == '') {
+			_Model::$Exception_Helper->request_failed_exception('Authorization amount is not set.');
+		}
+
+
+
+		if (!empty($order_payment['payment_method_id'])) {
+			// Payment method
+			$pm = $this->Payment_Method->get_row(
+				array(
+					'payment_method_id' => $order_payment['payment_method_id']
+				)
+			);
+
+			if (empty($pm)) {
+				_Model::$Exception_Helper->request_failed_exception('Payment method not found.');
+			}
+
+			if ($pm['name'] == 'Credit Card') {
+				$cc_payment = true;
+			}
+			else if ($pm['name'] == 'PayPal') {
+				$paypal_payment = true;
+			}
+		}
+
+		$success = false;
+		$transaction_id = NULL;
+
+		if ($cc_payment) {
+			$calls = array(
+				'void_credit_card' => array(
+					'authorization_transaction_id' => $order_payment['authorization_transaction_id']
+				)
+			);
+
+			$API = new API(API_KEY_DEVELOPER, PRIVATE_KEY_DEVELOPER);
+			$cc_result = $API->rest_api_request('payment', $calls);
+			$cc_result_decoded = json_decode($cc_result, true);
+			if ($cc_result_decoded == '') {
+				_Model::$Exception_Helper->request_failed_exception($cc_result);
+			}
+			$api_errors = api_errors_to_array($cc_result_decoded);
+
+			if (!empty($api_errors)) {
+				return static::wrap_result(false, NULL, _Model::$Status_Code->get_status_code_request_failed(), $api_errors);
+			}
+
+			if ($cc_result_decoded['data']['void_credit_card']['data']['transaction_id'] != '' && $cc_result_decoded['data']['void_credit_card']['data']['transaction_id'] != '0') {
+				$success = true;
+				$transaction_id = $cc_result_decoded['data']['void_credit_card']['data']['transaction_id'];
+			}
+			else { // failed (already voided)
+				_Model::$Exception_Helper->request_failed_exception($cc_result_decoded['data']['void_credit_card']['data']['response_reason_text']);
+			}
+
+			$data = $cc_result_decoded['data']['void_credit_card']['data'];
+		}
+		else if ($paypal_payment) { // Process Paypal
+			$calls = array(
+				'void_paypal_payment' => array(
+					'authorization_transaction_id' => $order_payment['authorization_transaction_id']
+				)
+			);
+
+			$API = new API(API_KEY_DEVELOPER, PRIVATE_KEY_DEVELOPER);
+			$result = $API->rest_api_request('payment', $calls);
+			$result_decoded = json_decode($result, true);
+
+			$api_errors = api_errors_to_array($result_decoded);
+
+			if (!empty($api_errors)) {
+				return static::wrap_result(false, NULL, _Model::$Status_Code->get_status_code_request_failed(), $api_errors);
+			}
+
+			$transaction_id = NULL; // does not return a transaction for void
+			$data = $result_decoded['data']['void_paypal_payment']['data'];
+			$success = true;
+		}
+
+		if ($success) {
+			$this->Orders->save(
+				array(
+					'id_order' => $order['id_order']
+					, 'payment_status' => 'Voided'
+				)
+			);
+
+			$this->Order_Payment->save(
+				array(
+					'id_order_payment' => $order_payment['id_order_payment']
+					, 'void_transaction_id' => $transaction_id
+				)
+			);
+
+			// Reverse user points and
+			$this->reverse_points($params['id_order']);
+			$this->reverse_commissions($params['id_order']);
+
+			// Restore quantity
+			$this->restore_quantity($params['id_order']);
+		}
+
+		return static::wrap_result(true, $data);
+
+	}
+
+	public function _delete_void_order($params) {
 		// Validations
 		$input_validations = array(
 			'id_order' => array(
@@ -769,6 +1157,159 @@ class Orders_Controller extends _Controller {
 	}
 
 	public function return_order($params) {
+		$this->load('Orders');
+		$this->load('Order_Invoice');
+		$this->load('Order_Payment');
+		$this->load('Payment_Method', ADMIN_API_HOST, ADMIN_API_USER, ADMIN_API_PASSWORD, ADMIN_API_DATABASE);
+
+		// Validations
+		$input_validations = array(
+			'id_order' => array(
+				'label' => 'Order ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+		);
+		$this->Validate->add_many($input_validations, $params, true);
+		$this->Validate->run();
+
+		$cc_payment = false;
+		$paypal_payment = false;
+
+		$order = $this->Orders->get_row(
+			array('id_order' => $params['id_order'])
+		);
+
+		if (empty($order)) {
+			_Model::$Exception_Helper->request_failed_exception('Order could not be found.');
+		}
+
+		$order_invoice = $this->Order_Invoice->get_row(
+			array('id_order' => $order['id_order'])
+		);
+
+		$order_payment = $this->Order_Payment->get_row(
+			array('id_order' => $order['id_order'])
+		);
+
+		if (empty($order_payment)) {
+			_Model::$Exception_Helper->request_failed_exception('Order Payment could not be found.');
+		}
+		else if ($order_payment['transaction_id'] == '') {
+			_Model::$Exception_Helper->request_failed_exception('Transaction ID is not set.');
+		}
+		else if ($order_payment['amount'] == '') {
+			_Model::$Exception_Helper->request_failed_exception('Amount is not set.');
+		}
+
+		if (!empty($order_payment['payment_method_id'])) {
+			// Payment method
+			$pm = $this->Payment_Method->get_row(
+				array(
+					'payment_method_id' => $order_payment['payment_method_id']
+				)
+			);
+
+			if (empty($pm)) {
+				_Model::$Exception_Helper->request_failed_exception('Payment method not found.');
+			}
+
+			if ($pm['name'] == 'Credit Card') {
+				$cc_payment = true;
+			}
+			else if ($pm['name'] == 'PayPal') {
+				$paypal_payment = true;
+			}
+		}
+
+		$success = false;
+		$transaction_id = NULL;
+
+		if ($cc_payment) {
+			$calls = array(
+				'credit_credit_card' => array(
+					'transaction_id' => $order_payment['transaction_id']
+					, 'amount' => $order_payment['amount']
+					, 'card_number' => $order_payment['card_number']
+				)
+			);
+
+			$API = new API(API_KEY_DEVELOPER, PRIVATE_KEY_DEVELOPER);
+			$cc_result = $API->rest_api_request('payment', $calls);
+			$cc_result_decoded = json_decode($cc_result, true);
+			if ($cc_result_decoded == '') {
+				_Model::$Exception_Helper->request_failed_exception($cc_result);
+			}
+			$api_errors = api_errors_to_array($cc_result_decoded);
+
+			if (!empty($api_errors)) {
+				return static::wrap_result(false, NULL, _Model::$Status_Code->get_status_code_request_failed(), $api_errors);
+			}
+
+			if ($cc_result_decoded['data']['credit_credit_card']['data']['transaction_id'] != '' && $cc_result_decoded['data']['credit_credit_card']['data']['transaction_id'] != '0') {
+				$success = true;
+				$transaction_id = NULL;
+			}
+			else { // failed (already returned)
+				_Model::$Exception_Helper->request_failed_exception($cc_result_decoded['data']['credit_credit_card']['data']['response_reason_text']);
+			}
+
+			$data = $cc_result_decoded['data']['credit_credit_card']['data'];
+
+		}
+		else if ($paypal_payment) { // Process Paypal
+			$calls = array(
+				'return_paypal_payment' => array(
+					'transaction_id' => $order_payment['transaction_id']
+					, 'amount' => $order_payment['amount']
+				)
+			);
+
+			$API = new API(API_KEY_DEVELOPER, PRIVATE_KEY_DEVELOPER);
+			$result = $API->rest_api_request('payment', $calls);
+			$result_decoded = json_decode($result, true);
+
+			$api_errors = api_errors_to_array($result_decoded);
+
+			if (!empty($api_errors)) {
+				return static::wrap_result(false, NULL, _Model::$Status_Code->get_status_code_request_failed(), $api_errors);
+			}
+
+			$transaction_id = $result_decoded['data']['return_paypal_payment']['data']['REFUNDTRANSACTIONID'];
+			$data = $result_decoded['data']['return_paypal_payment']['data'];
+			$success = true;
+		}
+
+		if ($success) {
+			$this->Orders->save(
+				array(
+					'id_order' => $order['id_order']
+					, 'payment_status' => 'Refunded'
+				)
+			);
+
+			$this->Order_Payment->save(
+				array(
+					'id_order_payment' => $order_payment['id_order_payment']
+					, 'refund_transaction_id' => $transaction_id
+				)
+			);
+
+			// Reverse user points and
+			$this->reverse_points($params['id_order']);
+			$this->reverse_commissions($params['id_order']);
+
+			// Restore quantity
+			$this->restore_quantity($params['id_order']);
+		}
+
+		return static::wrap_result(true, $data);
+
+	}
+
+	public function _delete_return_order($params) {
 		// Validations
 		$input_validations = array(
 			'id_order' => array(
