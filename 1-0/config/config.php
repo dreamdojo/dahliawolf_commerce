@@ -28,6 +28,11 @@ define('ADMIN_API_USER', 'off_admin');
 define('ADMIN_API_PASSWORD', 'EYCs5HhdwWbBKpvc');
 define('ADMIN_API_DATABASE', 'admin_offline_v1_2013');
 
+define('DW_API_HOST', '127.0.0.1');
+define('DW_API_USER', 'off_admin');
+define('DW_API_PASSWORD', 'EYCs5HhdwWbBKpvc');
+define('DW_API_DATABASE', 'dahliawolf_v1_2013');
+
 define('MYSQLHOST', DB_API_HOST);
 define('MYSQLUSER', DB_API_USER);
 define('MYSQLPASS', DB_API_PASSWORD);
