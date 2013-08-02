@@ -101,5 +101,4 @@ spl_autoload_register(function($class_name) {
 require_once DR . '/includes/php/functions.php';
 require_once DR . '/includes/php/functions-format.php';
 
-
 ?>
