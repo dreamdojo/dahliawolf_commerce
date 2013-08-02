@@ -36,12 +36,12 @@ class Address_Controller extends _Controller {
 
 			$state = $this->State->get_row(
 				array(
-					'iso_code' => $result['data']['get_user_address']['data']['state']
-					, 'id_country' => $country['id_country']
+					'iso_code' => $result['data']['get_user_address']['data']['state'],
+					'id_country' => $country['id_country']
 				)
 			);
 
-			if (empty($state)) {
+			if (empty($state) && strtolower($result['data']['get_user_address']['data']['state']) != 'n/a') {
 				_Model::$Exception_Helper->request_failed_exception('State not found.');
 			}
 
@@ -87,10 +87,10 @@ class Address_Controller extends _Controller {
 		// Validations
 		$input_validations = array(
 			'id_country' => array(
-				'label' => 'Country ID'
-				, 'rules' => array(
-					'is_set' => NULL
-					, 'is_int' => NULL
+				'label' => 'Country ID',
+				'rules' => array(
+					'is_set' => NULL,
+					'is_int' => NULL
 				)
 			)
 		);
