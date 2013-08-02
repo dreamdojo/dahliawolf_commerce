@@ -89,7 +89,9 @@ function log_error($msg, $error_type) {
 	$user_info .= "\nSCRIPT_NAME: " . $_SERVER['SCRIPT_NAME'];
 	$user_info .= "\nREMOTE_ADDR: " . $_SERVER['REMOTE_ADDR'];
 	$user_info .= "\nBROWSER: " . (!empty($_SERVER['HTTP_USER_AGENT']) ? $_SERVER['HTTP_USER_AGENT'] : '');
-	
+	$user_info .= "\nPOST DATA: " . var_export($_POST, true);
+    $user_info .= "\nREQUEST DATA: " . var_export($_REQUEST, true);
+
 	// Append Error To Log File
 	error_log($user_info . "\nMESSAGE: " . $msg . "\n\n", 3, LOG_DIR . '/' . $log_files[$error_type]);
 	
