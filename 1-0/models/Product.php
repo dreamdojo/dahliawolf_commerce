@@ -5,12 +5,20 @@ class Product extends _Model {
 	const PRIMARY_KEY_FIELD = 'id_product';
 
 	// 3/1/2013
-	public function get_product($id_product, $id_shop, $id_lang, $user_id = NULL) {
-		$sql = '
+	public function get_product($id_product, $id_shop, $id_lang, $user_id = NULL)
+    {
+        $join_sql = '';
+        if (!empty($user_id)) {
+            $join_sql = ' LEFT JOIN offline_commerce_v1_2013.favorite_product AS wishlist   ON wishlist.id_product = product.id_product  AND wishlist.id_customer = :user_id';
+        }
+
+
+		$sql = "
 		SELECT product.*
 			, product_lang.name AS product_lang_name, product_lang.name AS product_name
 			, shop.name AS shop_name
 			, lang.name AS lang_name
+			, count( (select count(*) from offline_commerce_v1_2013.favorite_product)) AS `wishlist_count`
 			, supplier.name AS supplier
 			, manufacturer.name AS manufacturer
 			, default_shop.name AS default_shop_name
@@ -49,10 +57,10 @@ class Product extends _Model {
 			LEFT JOIN offline_commerce_v1_2013.customer ON product.user_id = customer.user_id
 			/*LEFT JOIN dahliawolf_v1_2013.posting ON posting.product_id = mm.product_id
 			LEFT JOIN dahliawolf_v1_2013.user_username AS product_username ON posting.user_id = user_username.user_id*/
-
+			{$join_sql}
 
         WHERE product.id_product = :id_product AND shop.id_shop = :id_shop AND lang.id_lang = :id_lang AND product_shop.active = :active
-		';
+		";
 
 		if (!empty($user_id)) {
 			$sql .= ' AND product.user_id = :user_id';

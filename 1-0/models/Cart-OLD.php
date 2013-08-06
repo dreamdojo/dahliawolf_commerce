@@ -193,6 +193,7 @@ class Carts extends db {
 		
 		
 		}
+        }
 		
 
 		public function get_cart_from_cookie(){
@@ -235,12 +236,13 @@ class Carts extends db {
 				$stmt = $this->run($sql);
 				$rows = $stmt->fetchAll();
 
-				if(!empty()){
 
+                /*** what are we checking for ????? *///
+                /*
+				if(!empty()){
 					$_cart['_cartItems']=$rows;
-				
-				
 				}
+                */
 
 				$cookie_data=json_encode($_cart);
 				setcookie('_cart', $cookie_data);
@@ -354,10 +356,10 @@ class Carts extends db {
 		
 		}else{
 
-			$sql="delete from ".$this->cart." where id_cart='".$id_cart."'";
+			$sql="delete from ".$this->cart." where id_cart='".$cartd_id."'";
 			$this->run($sql);
 
-			$sql="delete from ".$this->cart_product." where id_cart='".$id_cart."'";
+			$sql="delete from ".$this->cart_product." where id_cart='".$cartd_id."'";
 			$this->run($sql);
 			
 			return json_encode(resultArray(TRUE, 'Cart is deleted from db'));
