@@ -56,7 +56,7 @@ try {
 		$SoapServer = new SoapServer(
 			NULL
 			, array(
-				'uri' => 'http://dev.jewelsthatgive.com/'
+				'uri' => 'http://commerce.offlinela.com/'
 			)
 		);
 		$SoapServer->setClass($controller_name); //$server->addFunction(SOAP_FUNCTIONS_ALL); // bad for security
