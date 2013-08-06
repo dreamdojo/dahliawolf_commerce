@@ -62,7 +62,7 @@ function default_exception_handler($exception) {
 
 set_exception_handler('default_exception_handler');
 
-/* cannot be used with __invoke. beacuse __invoke will 
+/* cannot be used with __invoke. beacuse __invoke will
 	be evaluated first as a function, not as a class
 	so __autoload won't be triggered
 */
@@ -73,7 +73,7 @@ spl_autoload_register(function($class_name) {
 		, DR . '/includes/php/classes/'
 		, DR . '/' . API_VERSION . '/lib/php/'
 	);
-	
+
 	foreach ($class_dirs as $class_dir) {
 		// Search through directories recursively
 		$Directory = new RecursiveDirectoryIterator($class_dir, RecursiveDirectoryIterator::SKIP_DOTS);
@@ -85,20 +85,21 @@ spl_autoload_register(function($class_name) {
 			require $file;
 			return true;
 		}
-		
+
 		$file = $class_dir . '/' . $class_name . '.php';
-		
+
 		if (file_exists($file)) {
 			require $file;
 			return true;
 		}
 	}
-	
+
 	throw new Exception('Unable to load ' . $class_name);
-	
+
 });
 
 require_once DR . '/includes/php/functions.php';
 require_once DR . '/includes/php/functions-format.php';
+require_once DR . '/includes/php/functions-api.php'
 
 ?>

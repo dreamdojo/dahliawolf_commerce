@@ -1250,7 +1250,7 @@ class Orders_Controller extends _Controller {
 
 			if ($cc_result_decoded['data']['credit_credit_card']['data']['transaction_id'] != '' && $cc_result_decoded['data']['credit_credit_card']['data']['transaction_id'] != '0') {
 				$success = true;
-				$transaction_id = NULL;
+				$transaction_id = $cc_result_decoded['data']['credit_credit_card']['data']['transaction_id'];
 			}
 			else { // failed (already returned)
 				_Model::$Exception_Helper->request_failed_exception($cc_result_decoded['data']['credit_credit_card']['data']['response_reason_text']);
