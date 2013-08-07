@@ -70,33 +70,61 @@ class _Controller {
 		
 		return $status_code;
 	}
-	
-	public function process_request($request) {
-		$Status_Code = new Status_Code();
-		
-		// Authentication
+
+    protected function checkHMAC($calls)
+    {
+        // Authentication
 		$api_key = !empty($request['api_key']) ? $request['api_key'] : NULL;
-		$client_hmac = !empty($request['hmac']) ? $request['hmac'] : NULL;
-		
+
 		$API_Credential = new API_Credential();
 		$api_credential = $API_Credential->get_api_credential_by_api_key($api_key);
-		
-		
+
+
 		$private_key = !empty($api_credential) ? $api_credential['private_key'] : NULL;
-		
-		$HQ_API = new API($api_key, $private_key);
-		
-		$calls = $request['calls'];
-		if (is_string($calls)) {
-			$calls = json_decode($calls, true);
-		}
-		
-		$server_hmac = $HQ_API->get_hmac($calls);
-		
-		// Authorization Failed
+
+		$API = new API($api_key, $private_key);
+
+        $client_hmac = !empty($request['hmac']) ? $request['hmac'] : NULL;
+        $Status_Code = new Status_Code();
+        $server_hmac = $API->get_hmac($calls);
+
+        // Authorization Failed
 		if (empty($api_credential) || $api_credential['active'] != '1' || ($client_hmac != $server_hmac)) { // Invalid API Key
-			$result = static::wrap_result(false, NULL, $Status_Code->get_status_code_unauthorized(), array('Invalid API Key'));
+            return false;
 		}
+
+        return true;
+    }
+	
+	public function process_request($request)
+    {
+        $Status_Code = new Status_Code();
+
+        $calls = $request['calls'];
+        if (is_string($calls)) {
+            $calls = json_decode($calls, true);
+            unset($request['function']);
+        }
+
+        if( isset($request['use_hmac_check']) && (bool)$request['use_hmac_check'] === false )
+        {
+          $hmac_ok = true;
+        }else{
+          $hmac_ok = self::checkHMAC($calls);
+        }
+
+        /// hack to use GET vars as model data,and use function as the action.. legacy "API"
+        if( (!$calls || count($calls) ==0) && $request['function'] )
+        {
+          $calls[$request['function']] = $_GET;
+          unset($request['function']);
+        }
+
+        if(!$hmac_ok)
+        {
+            return static::wrap_result(false, NULL, $Status_Code->get_status_code_unauthorized(), array('Invalid API Key'));
+        }
+
 		// Authorized, Do Calls
 		else {
 			$results = array();

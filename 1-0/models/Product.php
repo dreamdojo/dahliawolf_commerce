@@ -36,7 +36,7 @@ class Product extends _Model {
 				SELECT m.*, posting_product.posting_id, posting_product.product_id
 				FROM
 				(
-					SELECT MIN(posting_product.created) AS pp_created, GROUP_CONCAT(posting_product.posting_id SEPARATOR \'|\') AS posting_ids
+					SELECT MIN(posting_product.created) AS pp_created, GROUP_CONCAT(posting_product.posting_id SEPARATOR '|') AS posting_ids
 					FROM dahliawolf_v1_2013.posting
 						INNER JOIN dahliawolf_v1_2013.posting_product ON posting.posting_id = posting_product.posting_id
 					GROUP BY posting_product.product_id

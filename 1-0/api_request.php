@@ -1,13 +1,12 @@
 <?
 error_reporting(E_ALL);
-ini_set('display_errors', '0');
+ini_set('display_errors', '1');
 session_start();
 
 require_once 'config/config.php';
 
 //require_once 'controllers/_Controller.php';
 //require_once 'controllers/Account_Controller.php';
-
 
 
 define('APP_PATH', realpath('./')."/");
@@ -32,9 +31,11 @@ $error_handler->registerErrorHandler();
 $endpoint = !empty($_GET['endpoint']) ? $_GET['endpoint'] : NULL;
 $controller_name = str_replace(' ', '_', ucwords(str_replace('_', ' ', $endpoint))) . '_Controller';
 
+/*
 if (empty($endpoint)) {
 	die('Endpoint is not set.');
 }
+*/
 
 try {
 	$controller = new $controller_name();
@@ -42,7 +43,7 @@ try {
 	$request = !empty($_POST) ? $_POST : $_GET;
 	$response_format = !empty($_GET['response_format']) ? $_GET['response_format'] : NULL;
 	$request_methods = get_request_methods();
-	
+
 	// Validate Response Format
 	if (empty($response_format) || empty($request_methods[$response_format])) {
 		die('Invalid response format.');
@@ -65,17 +66,19 @@ try {
 	}
 	
 	// REST Call
-	else if ($request_method == 'REST' && !empty($request['calls'])) {
+	else if ($request_method == 'REST' ) {
         /** @var  $controller _Controller */
+
+        header( sprintf("Content-Type: application/%s", $response_format));
 		$result = $controller->process_request($request);
 		
 		// JSON
 		if ($response_format == 'json') {
-			echo json_encode($result);
+			echo json_pretty($result);
 		}
 		// JSONP
 		else if ($response_format == 'jsonp') {
-			echo '?(' . json_encode($result) . ')';
+			echo '?(' . json_pretty($result) . ')';
 		}
 		
 		die();
