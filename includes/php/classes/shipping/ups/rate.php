@@ -25,7 +25,7 @@ class UpsRate
     private $account_number;
     private $ship_from_zip;
     private $service_uri;
-    function getRate($shipToZip,$service,$weight,$length,$width,$height)
+    function getRate($shipToZip, $shipToCountryCode, $service,$weight,$length,$width,$height)
     {
 
         if(floatval($weight) < .5) $weight = 1;
@@ -60,7 +60,7 @@ class UpsRate
         <ShipTo>
         <Address>
         <PostalCode>$shipToZip</PostalCode>
-        <CountryCode>US</CountryCode>
+        <CountryCode>$shipToCountryCode</CountryCode>
         <ResidentialAddressIndicator/>
         </Address>
         </ShipTo>
@@ -94,6 +94,7 @@ class UpsRate
         </Package>
         </Shipment>
         </RatingServiceSelectionRequest>";
+		
         $ch = curl_init($this->service_uri);
         curl_setopt($ch, CURLOPT_HEADER, 1);
         curl_setopt($ch,CURLOPT_POST,1);
@@ -103,6 +104,7 @@ class UpsRate
         curl_setopt ($ch, CURLOPT_SSL_VERIFYHOST, 0);
         curl_setopt($ch,CURLOPT_POSTFIELDS,$data);
         $result=curl_exec ($ch);
+		//echo '<pre>';echo'UPS Result: '; echo $result;
         //echo '<!-- '. $result. ' -->'; // THIS LINE IS FOR DEBUG PURPOSES ONLY-IT WILL SHOW IN HTML COMMENTS
         $data = strstr($result, '<?');
         $xml_parser = xml_parser_create();
@@ -137,6 +139,14 @@ class UpsRate
                 }
             }
         curl_close($ch);
+		
+		if (!isset($params['RATINGSERVICESELECTIONRESPONSE']['RATEDSHIPMENT']) 
+			|| !isset($params['RATINGSERVICESELECTIONRESPONSE']['RATEDSHIPMENT']['TOTALCHARGES']) 
+			|| !isset($params['RATINGSERVICESELECTIONRESPONSE']['RATEDSHIPMENT']['TOTALCHARGES']['MONETARYVALUE'])
+		) {
+			return false;
+		}
+		
         return $params['RATINGSERVICESELECTIONRESPONSE']['RATEDSHIPMENT']['TOTALCHARGES']['MONETARYVALUE'];
         }
     }

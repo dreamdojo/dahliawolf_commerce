@@ -74,6 +74,8 @@ class FedexRate
 
         //$client->__setLocation($this->server_uri);
         $response = $client->getRates($request);
+		//return $response;
+        //echo'fedex response: ';print_r($response);
 
 		// Return relevant data
 		$shipping_options = array();

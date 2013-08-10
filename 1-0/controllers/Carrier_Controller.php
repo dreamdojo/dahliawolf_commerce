@@ -168,8 +168,8 @@ class Carrier_Controller extends _Controller {
 			, 'id_state' => array(
 				'label' => 'State Id'
 				, 'rules' => array(
-					'is_set' => NULL
-					, 'is_int' => NULL
+					/*'is_set' => NULL
+					, */'is_int' => NULL
 				)
 			)
 			, 'zip' => array(
@@ -211,7 +211,7 @@ class Carrier_Controller extends _Controller {
 		);
 		$this->Validate->add_many($input_validations, $validate_params, true);
 		$this->Validate->run();
-
+		
 		$id_country = $params['id_country'];
 		$id_zone = $params['id_zone'];
 		$id_state = $params['id_state'];
@@ -234,7 +234,7 @@ class Carrier_Controller extends _Controller {
 		else {
 			$carriers = $this->Carrier->get_carrier_options_by_weight($id_zone, $params['id_shop'], $params['id_lang'], $params['total_product_weight']);
 		}
-
+		
 		if (!empty($carriers)) {
 			$live_rate_options = array();
 
@@ -258,91 +258,117 @@ class Carrier_Controller extends _Controller {
 			if (empty($user_address)) {
 				_Model::$Exception_Helper->request_failed_exception('Shipping address not found.');
 			}
-
+			
+			$country = $this->Country->get_country($user_address['country']['id_country'], $params['id_lang']);
+			if (empty($country)) {
+				_Model::$Exception_Helper->request_failed_exception('Country not found.');
+			}
+			
 			foreach ($carriers as $i => $carrier) {
 				$carriers[$i]['tax_info'] = $this->Tax_Rule->get_tax_info($carrier['id_tax_rules_group'], $id_country, $id_state, $zip, $carrier['price'], 1);
 
 				// Check if delivery method needs to check for live rates
 				if ($carrier['is_live_rate']) {
 					$carrier_name = $carrier['carrier_name'];
+					$carrier_class = ucwords(strtolower($carrier_name)) . 'Rate';
 
 					// Instantiate custom carrier class & get live rates
-					if (empty($this->carrier_rate_objects[$carrier_name])) {
-						$carrier_class = ucwords(strtolower($carrier_name)) . 'Rate';
-
+					if ($carrier_name == 'UPS') {
+						if (empty($this->carrier_rate_objects[$carrier_name])) {
+							$this->carrier_rate_objects[$carrier_name] = new $carrier_class($shipping_configs['UPS API Access Key'], $shipping_configs['UPS API Username'], $shipping_configs['UPS API Password'], $shipping_configs['UPS API Account Number'], $shop_address['postcode'], false);
+							$live_rate_options[$carrier_name] = array();
+						}
+						
+						$rate = $this->carrier_rate_objects[$carrier_name]->getRate($user_address['address']['zip'], $user_address['country']['iso_code'], $carrier['code'], 1, 1, 1, 1);
+						array_push($live_rate_options[$carrier_name],
+							array(
+								'service' => $carrier['code']
+								, 'rate' => $rate
+							)
+						);
+					}
+					else if (empty($this->carrier_rate_objects[$carrier_name])) {
+					//if (1) {
 						// Get rates
 						if ($carrier_class == 'FedexRate') {
 							// FedexRate->__construct($accessKey, $password, $accountNumber, $meterNumber, $useTestServer)
 							$this->carrier_rate_objects[$carrier_name] = new $carrier_class($shipping_configs['FedEx API Authentication Key'], $shipping_configs['FedEx API Password'], $shipping_configs['FedEx API Account Number'], $shipping_configs['FedEx API Meter Number'], false);
 							//$this->carrier_rate_objects[$carrier_name] = new $carrier_class('h1EQEtwlbFcpAnQp', '4Fn3jvaAe6NHljQuJYRrKQAax', '366607641', '105158564', false);
-							// FedexRate->getRate($sendFromDetails, $sendToDetails, $service, $weight, $length, $width, $height)
-							$live_rate_options[$carrier_name] = $this->carrier_rate_objects[$carrier_name]->getRates(
-								array(
-									'StreetLines' => array(
-										$shop_address['address1']
-										, $shop_address['address2']
-									)
-									, 'City' => $shop_address['city']
-									, 'StateOrProvinceCode' => $shop_address['state']
-									, 'PostalCode' => $shop_address['postcode']
-									, 'CountryCode' => $shop_address['country']
-									//, 'Residential' => '1'
+							$from_details = array(
+								'StreetLines' => array(
+									$shop_address['address1']
+									, $shop_address['address2']
 								)
-								, array(
-									'StreetLines' => array(
-										$user_address['address']['street']
-										, $user_address['address']['street_2']
-									)
-									, 'City' => $user_address['address']['city']
-									, 'StateOrProvinceCode' => $user_address['state']['iso_code']
-									, 'PostalCode' => $user_address['address']['zip']
-									, 'CountryCode' => $user_address['country']['iso_code']
-									, 'Residential' => '1'
-								)
-								, ($params['total_product_weight'] / 16), NULL, NULL, NULL
+								, 'City' => $shop_address['city']
+								, 'StateOrProvinceCode' => $shop_address['state']
+								, 'PostalCode' => $shop_address['postcode']
+								, 'CountryCode' => $shop_address['country']
+								//, 'Residential' => '1'
 							);
+							$to_details = array(
+								'StreetLines' => array(
+									$user_address['address']['street']
+									, $user_address['address']['street_2']
+								)
+								, 'City' => $user_address['address']['city']
+								//, 'StateOrProvinceCode' => $user_address['state']['iso_code']
+								, 'PostalCode' => $user_address['address']['zip']
+								, 'CountryCode' => $user_address['country']['iso_code']
+								, 'Residential' => '1'
+							);
+							if (!empty($user_address['state'])) {
+								$to_details['StateOrProvinceCode'] = $user_address['state']['iso_code'];
+							}
+
+							// FedexRate->getRate($sendFromDetails, $sendToDetails, $service, $weight, $length, $width, $height)
+							$live_rate_options[$carrier_name] = $this->carrier_rate_objects[$carrier_name]->getRates($from_details, $to_details, ($params['total_product_weight'] / 16), NULL, NULL, NULL);
+							//return $live_rate_options[$carrier_name];
+							//echo'<pre>';print_r($from_details);print_r($to_details);print_r($live_rate_options[$carrier_name]);die('Carrier_Controller.php:Fedex');
 						}
-						else if ($carrier_class == 'UpsRate') {
+						/*else if ($carrier_class == 'UpsRate') {
 							// UpsRate->__construct($accessKey, $username, $password, $accountNumber, $shipFromZip, $useTestServer = false)
-							$this->carrier_rate_objects[$carrier_name] = new $carrier_class('5C8F7E11A450B510', 'companycheckout', 'Dev#1234', '552V7V', $shop_address['postcode'], true);
+							$this->carrier_rate_objects[$carrier_name] = new $carrier_class($shipping_configs['UPS API Access Key'], $shipping_configs['UPS API Username'], $shipping_configs['UPS API Password'], $shipping_configs['UPS API Account Number'], $shop_address['postcode'], false);
 							// UpsRate->getRate($shipToZip,$service,$weight,$length,$width,$height)
-							$live_rate_options[$carrier_name] = $this->carrier_rate_objects[$carrier_name]->getRate($user_address['address']['zip'], '', 1, 1, 1, 1);
-						}
+							$live_rate_options[$carrier_name] = $this->carrier_rate_objects[$carrier_name]->getRate($user_address['address']['zip'], '01', 1, 1, 1, 1);
+							//echo'<pre>';print_r($live_rate_options[$carrier_name]);die('Carrier_Controller.php:UPS');
+						}*/
 						else if ($carrier_class == 'UspsRate') {
+						//if (1) {
 							// UspsRate->__construct($username)
+							$carrier_class = 'UspsRate';
 							$this->carrier_rate_objects[$carrier_name] = new $carrier_class($shipping_configs['USPS API Username']);
 							// UspsRate->getRate($service, $firstClassMailType, $sendFromZip, $sendToZip, $pounds, $ounces, $containerSize, $machinable = "true")
 							$lbs = floor($params['total_product_weight'] / 16);
 							$oz = $params['total_product_weight'] % 16;
 
-							$live_rate_options[$carrier_name] = $this->carrier_rate_objects[$carrier_name]->getRate('ALL', '', $shop_address['postcode'], $user_address['address']['zip'], $lbs, $oz, 'REGULAR');
+							if ($user_address['country']['iso_code'] == 'US') {
+								$live_rate_options[$carrier_name] = $this->carrier_rate_objects[$carrier_name]->getRate('ALL', '', $shop_address['postcode'], $user_address['address']['zip'], $lbs, $oz, 'REGULAR');
+							}
+							else {
+								$live_rate_options[$carrier_name] = $this->carrier_rate_objects[$carrier_name]->getIntlRate($params['total_products'], 'Package', $country['name'], $lbs, $oz, 'REGULAR');
+							}
+							
+							//echo'<pre>';print_r($live_rate_options[$carrier_name]);die('Carrier_Controller.php:usps');
+							
 						}
 					}
 
 					// Loop through live rates to set price
-					if (!empty($live_rate_options[$carrier_name])) {
+					if (!empty($live_rate_options[$carrier_name]) && is_array($live_rate_options[$carrier_name])) {
 						//echo $carrier['delay'] . "\n";
 						foreach ($live_rate_options[$carrier_name] as $option) {
-							if ($carrier_class == 'FedexRate' || $carrier_class == 'UspsRate') {
-								if ($option['service'] == $carrier['code']) {
-									$carriers[$i]['price'] = $option['rate'];
+							if ($option['service'] == $carrier['code']) {
+								$carriers[$i]['price'] = $option['rate'];
 
-									// Set flag to let us know the live rate was returned (so we can filter out ones that didn't)
-									$carriers[$i]['live_rate'] = $option['rate'];
-								}
-							}
-							else if ($carrier_class == 'UpsRate') {
-
+								// Set flag to let us know the live rate was returned (so we can filter out ones that didn't)
+								$carriers[$i]['live_rate'] = $option['rate'];
 							}
 						}
-					}
-					else {
-						//print_r($carrier);
 					}
 				}
 			}
 		}
-
+		
 		// Filter out live rate options that didn't return a live rate
 		$carriers = $this->filter_failed_rates($carriers);
 

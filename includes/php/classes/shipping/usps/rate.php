@@ -129,6 +129,33 @@ class UspsRate
         return $shipping_options;
         //return $this->array_response['RATEV4RESPONSE']['1ST'][0]['RATE'];
     }
+	
+	 public function getIntlRate($valueOfContents, $mailType, $country, $pounds, $ounces, $containerSize, $machinable = "true")
+    {
+        if(floatval($pounds) < .5) $pounds = 1;
+        if(floatval($ounces) < 8) $ounces = 8;
+
+        $this->api_name = "IntlRateV2";
+        $this->xml_data = "<IntlRateV2Request USERID=\"$this->username\"><Revision/><Package ID=\"1ST\"><Pounds>$pounds</Pounds><Ounces>$ounces</Ounces><Machinable>$machinable</Machinable><MailType>$mailType</MailType><ValueOfContents>$valueOfContents</ValueOfContents><Country>$country</Country><Container/><Size>$containerSize</Size><Width/><Length/><Height/><Girth/><CommercialFlag>N</CommercialFlag></Package></IntlRateV2Request>";
+		
+        $this->callWebtools();
+        
+
+        $shipping_options = array();
+        foreach ($this->array_response['INTLRATEV2RESPONSE']['1ST'] as $i => $details) {
+            if (is_numeric($i)) {
+                //$service = str_replace('&lt;sup&gt;&amp;reg;&lt;/sup&gt;', '', $details['MAILSERVICE']);
+
+                $shipping_option = array(
+                    'service' => $details['SVCDESCRIPTION'],
+                    'rate' => $details['POSTAGE']
+                );
+                array_push($shipping_options, $shipping_option);
+            }
+        }
+        return $shipping_options;
+        //return $this->array_response['RATEV4RESPONSE']['1ST'][0]['RATE'];
+    }
 }
 
 ?>
