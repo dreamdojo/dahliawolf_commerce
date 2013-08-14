@@ -26,7 +26,7 @@
 		private $file_handle;
         
 		
-		public function __construct( $filepath , $priority )
+		public function __construct( $filepath , $priority=Jk_Logger::DEBUG )
 		{
 			if ( $priority == Jk_Logger::OFF ) return;
 			

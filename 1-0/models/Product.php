@@ -120,13 +120,38 @@ class Product extends _Model {
 		}
 	}
 
-	public function get_products($id_shop, $id_lang, $user_id = NULL)
+	public function get_products($id_shop, $id_lang,  $user_id = NULL, $viewer_user_id=null)
     {
+
+        $logger = new Jk_Logger(APP_PATH . 'logs/product.log');
+
+        $extra_join = '';
+        $extra_select = '';
+        if($viewer_user_id)
+        {
+            $extra_select = ", wishlist_id.id_favorite_product as 'wishlist_id'";
+            $extra_join = "LEFT JOIN offline_commerce_v1_2013.favorite_product AS wishlist_id ON wishlist_id.id_product = product.id_product AND  wishlist_id.id_customer = :viewer_user_id";
+        }
+
 		$sql = "
-		SELECT product.*, product_lang.name AS product_lang_name, product_lang.name AS product_name, shop.name AS shop_name, lang.name AS lang_name, supplier.name AS supplier, manufacturer.name AS manufacturer, default_shop.name AS default_shop_name, tax_rules_group.name AS tax_rules_group, product_lang.description, product_lang.description_short, product_lang.meta_description, product_lang.meta_keywords, product_lang.meta_title, customer.username, (SELECT product_file.product_file_id FROM offline_commerce_v1_2013.product_file WHERE product_file.product_id = product.id_product ORDER BY product_file.product_file_id ASC LIMIT 1) AS product_file_id, IF(EXISTS(SELECT category_product.id_category_product FROM offline_commerce_v1_2013.category_product WHERE category_product.id_category = 1 AND category_product.id_product = product.id_product), 1, 0) AS is_new
-			, mm.posting_ids
-			, IF(like_winner.like_winner_id IS NOT NULL, 1, 0) AS is_winner
-			, wishlist.wishlist_count
+		SELECT  product.*,
+		        product_lang.name AS product_lang_name,
+		        product_lang.name AS product_name,
+		        shop.name AS shop_name,
+		        lang.name AS lang_name,
+		        supplier.name AS supplier,
+		        manufacturer.name AS manufacturer,
+		        default_shop.name AS default_shop_name,
+		        tax_rules_group.name AS tax_rules_group,
+		        product_lang.description, product_lang.description_short, product_lang.meta_description, product_lang.meta_keywords, product_lang.meta_title,
+		        (SELECT product_file.product_file_id FROM offline_commerce_v1_2013.product_file WHERE product_file.product_id = product.id_product ORDER BY product_file.product_file_id ASC LIMIT 1) AS product_file_id,
+		        IF(EXISTS(SELECT category_product.id_category_product FROM offline_commerce_v1_2013.category_product WHERE category_product.id_category = 1 AND category_product.id_product = product.id_product), 1, 0) AS is_new,
+		        user_username.username as username,
+			    mm.posting_ids,
+			    IF(like_winner.like_winner_id IS NOT NULL, 1, 0) AS is_winner,
+			    wishlist.wishlist_count,
+                CONCAT('http://content.dahliawolf.com/shop/product/inspirations/image.php?id_product=', product.id_product) AS inspiration_image_url
+                {$extra_select}
 		FROM offline_commerce_v1_2013.product
 			LEFT JOIN
 			(
@@ -150,10 +175,13 @@ class Product extends _Model {
 			LEFT JOIN offline_commerce_v1_2013.category ON product.id_category_default = category.id_category
 			LEFT JOIN offline_commerce_v1_2013.shop AS default_shop ON product.id_shop_default = default_shop.id_shop
 			LEFT JOIN offline_commerce_v1_2013.tax_rules_group ON product.id_tax_rules_group = tax_rules_group.id_tax_rules_group
-			LEFT JOIN offline_commerce_v1_2013.customer ON product.user_id = customer.user_id
+			/*LEFT JOIN offline_commerce_v1_2013.customer ON product.user_id = customer.user_id*/
 
+			LEFT JOIN dahliawolf_v1_2013.user_username ON user_username.user_id = product.user_id
+
+            {$extra_join}
 			LEFT JOIN (
-				select count(*) as 'wishlist_count',
+				SELECT COUNT(*) as 'wishlist_count',
 				sub_wishlist.id_product as 'id_product'
 				FROM offline_commerce_v1_2013.favorite_product AS sub_wishlist
 					INNER JOIN offline_commerce_v1_2013.product AS sub_product ON sub_wishlist.id_product = sub_product.id_product
@@ -161,28 +189,38 @@ class Product extends _Model {
 				GROUP BY sub_wishlist.id_product
 			) AS wishlist ON wishlist.id_product = product.id_product
 
-        WHERE shop.id_shop = :id_shop AND lang.id_lang = :id_lang AND product_shop.active = :active";
+        WHERE shop.id_shop = :id_shop AND lang.id_lang = :id_lang AND product_shop.active = :active ";
+
+
 		//product.status != :not_status AND
 		if (!empty($user_id)) {
 			$sql .= ' AND product.user_id = :user_id';
 		}
 
 		$sql .= '
-            ORDER BY product_shop.position ASC, product.id_product ASC
+            ORDER BY product_shop.position ASC, product.id_product DESC
 		';
 
 		$params = array(
-			':id_shop' => $id_shop
-			, ':id_lang' => $id_lang
-			, ':active' => '1'
+			':id_shop' => $id_shop,
+			':id_lang' => $id_lang,
+			':active' => '1',
 			//, ':not_status' => 'Pending'
 		);
 
-		if (!empty($user_id)) {
+		if ($user_id) {
 			$params[':user_id'] = $user_id;
 		}
 
-        //var_dump($sql);
+		if ($viewer_user_id) {
+			$params[':viewer_user_id'] = $viewer_user_id;
+		}
+
+
+        $logger->LogInfo("query params: " . var_export($params,true));
+
+
+        if(isset($_GET['t'])) var_dump($sql);
 
 		try {
 			$data = self::$dbs[$this->db_host][$this->db_name]->exec($sql, $params);

@@ -4,16 +4,16 @@ class Wishlist_Controller extends _Controller {
 	public function add_wishlist($params = array()) {
 		$this->load('Wishlist');
 		
-		$data_check = $this->Wishlist->does_product_exist_in_wishlist($params['id_shop'], $params['id_customer'], $params['id_product']);
+		$data_check = $this->Wishlist->does_product_exist_in_wishlist($params['id_shop'], $params['user_id'], $params['id_product']);
 		
 		if(empty($data_check)) {
 			$mysqldate = date("Y-m-d H:i:s");	
 			$favorite = array(
-				'id_product' 	=> $params['id_product']
-				, 'id_customer' => $params['id_customer']
-				, 'id_shop'		=> $params['id_shop']
-				, 'date_add' 	=> $mysqldate
-				, 'date_upd' 	=> $mysqldate
+				'id_product' 	=> $params['id_product'],
+				'id_customer' => $params['user_id'],
+				'id_shop'		=> $params['id_shop'],
+				'date_add' 	=> $mysqldate,
+				'date_upd' 	=> $mysqldate,
 			);
 			//Validate
 			$data = $this->Wishlist->save($favorite);
@@ -57,14 +57,13 @@ class Wishlist_Controller extends _Controller {
 				'label' => 'User Id'
 				, 'rules' => array(
 					'is_set' => NULL
-					, 'is_int' => NULL
 				)
 			)
 			, 'id_favorite_product' => array(
 				'label' => 'Favorite Product Id'
 				, 'rules' => array(
-					'is_set' => NULL
-					, 'is_int' => NULL
+					'is_set' => NULL,
+					'is_int' => NULL
 				)
 			)
 		);

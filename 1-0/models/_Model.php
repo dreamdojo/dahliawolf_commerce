@@ -111,7 +111,7 @@ class _Model {
 	
 	public function db_delete($where_sql, $parameters) {
 		$called_class = get_called_class();
-		
+
 		return self::$dbs[$this->db_host][$this->db_name]->delete($called_class::TABLE, $where_sql, $parameters);
 	}
 	

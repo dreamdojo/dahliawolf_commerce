@@ -38,13 +38,42 @@ class Wishlist extends _Model {
 		
 		try {
 			$params = array(
-				':id_favorite_product' => $id_favorite_product
-				, ':id_customer' => $id_customer
+				':id_favorite_product' => $id_favorite_product,
+                ':id_customer' => $id_customer
 			);
-			
-			$this->db_delete('id_favorite_product = :id_favorite_product AND id_customer = :id_customer', $params);
-			
-			return $this->db_row_count();
+            $ids = explode(",", $id_customer);
+
+            $logger = new Jk_Logger(APP_PATH . 'logs/wishlist.log');
+            $logger->LogInfo( "customer ids: " . var_export($ids, true));
+
+            $delete_count = 0;
+
+            if(count($ids)> 1)
+            {
+                foreach($ids as $id) {
+                    $params = array(
+                        ':id_favorite_product' => $id_favorite_product,
+                        ':id_customer' => $id,
+                    );
+                    $logger->LogInfo( "deleting wishlist with params: " . var_export($params, true));
+
+                    try {
+                        $this->db_delete('id_favorite_product = :id_favorite_product AND id_customer = :id_customer', $params);
+                        $delete_count += $this->db_row_count();
+                    } catch(Exception $e) {
+                        $error = $e->getMessage();
+                        $logger->LogInfo( "query params: " . var_export($params, true));
+                    }
+                }
+            }else{
+                $logger->LogInfo( "deleting wishlist with params: " . var_export($params, true));
+                $this->db_delete('id_favorite_product = :id_favorite_product AND id_customer = :id_customer', $params);
+                $delete_count += $this->db_row_count();
+            }
+
+            $logger->LogInfo( "delete count: $delete_count" );
+
+			return $delete_count;
 			
 		} catch(Exception $e) {
 			self::$Exception_Helper->server_error_exception('Unable to delete row.');
@@ -52,7 +81,7 @@ class Wishlist extends _Model {
 	}
 	
 	public function get_wishlist($id_shop, $id_lang, $id_customer) {
-		$sql = '
+		$sql = "
 		SELECT favorite_product.id_favorite_product, 
          product.*,
          product_lang.name AS product_lang_name,
@@ -73,7 +102,7 @@ class Wishlist extends _Model {
          IF(EXISTS(SELECT category_product.id_category_product FROM category_product WHERE category_product.id_category = 1 AND category_product.id_product = product.id_product),
          1,
          0) AS is_new
-		FROM product 
+		FROM product
 			INNER JOIN product_shop ON product.id_product = product_shop.id_product
 			INNER JOIN shop ON product_shop.id_shop = shop.id_shop
 			INNER JOIN product_lang ON product.id_product = product_lang.id_product
@@ -91,7 +120,7 @@ class Wishlist extends _Model {
         	AND product_shop.active 			= :active
          	AND favorite_product.id_customer 	= :id_customer
 		ORDER BY favorite_product.date_add
-		';
+		";
 		
 		$params = array(
 			':id_shop' => $id_shop
