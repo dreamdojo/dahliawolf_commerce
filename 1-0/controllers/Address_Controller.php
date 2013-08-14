@@ -41,12 +41,12 @@ class Address_Controller extends _Controller {
 				)
 			);
 
-			if (empty($state) && strtolower($result['data']['get_user_address']['data']['state']) != 'n/a') {
+			/*if (empty($state) && strtolower($result['data']['get_user_address']['data']['state']) != 'n/a') {
 				_Model::$Exception_Helper->request_failed_exception('State not found.');
-			}
+			}*/
 
-			$id_country = $country['id_country'];
-			$id_state = $state['id_state'];
+			//$id_country = $country['id_country'];
+			//$id_state = $state['id_state'];
 			$zip = $result['data']['get_user_address']['data']['zip'];
 			$id_zone = $country['id_zone'];
 		}

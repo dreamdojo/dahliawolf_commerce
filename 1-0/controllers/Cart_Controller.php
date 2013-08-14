@@ -311,7 +311,7 @@ class Cart_Controller extends _Controller {
 
 				$id_country = $address_info['country']['id_country'];
 				$id_zone = $address_info['country']['id_zone'];
-				$id_state = $address_info['state']['id_state'];
+				$id_state = !empty($address_info['state']) ? $address_info['state']['id_state'] : NULL;
 				$zip = $address_info['address']['zip'];
 				$has_shipping_address = true;
 			}
@@ -426,7 +426,7 @@ class Cart_Controller extends _Controller {
 						, 'shipping_address_id' => $params['shipping_address_id']
 					)
 				);
-
+				//echo'<pre> CARRIER OPTIONS RESULTS: ';print_r($carrier_options_result);die('Carrier_Controller.php:usps');
 				$data['carrier_options'] = $carrier_options_result['data'];
 
 				if (!empty($data['carrier_options'])) {
@@ -1779,7 +1779,7 @@ class Cart_Controller extends _Controller {
 
 		}
 	}
-	
+
 	/*
 	 function add_membership_discount($user_id, $cart, $id_lang) {
 		$this->load('Cart_Rule');
@@ -1791,14 +1791,14 @@ class Cart_Controller extends _Controller {
 		$membership_discounts = rows_to_groups($membership_discounts, 'id_cart_rule');
 		// Get user membership level
 		$membership_level = $this->Dw_User->get_membership_level($user_id);
-		
+
 		// Get current discounts
 		$cart_discounts = $this->Cart_Cart_Rule->get_cart_discounts($cart['id_cart'], $id_lang);
-		
+
 		// Remove if not applicable
 		// Discount no longer exists
-		if (isset($cart['user_id_cart_rule']) 
-			&& !empty($cart['user_id_cart_rule']) 
+		if (isset($cart['user_id_cart_rule'])
+			&& !empty($cart['user_id_cart_rule'])
 			&& empty($membership_discounts[$cart['user_id_cart_rule']])
 			&& !empty($cart_discounts)
 		) {
@@ -1807,12 +1807,12 @@ class Cart_Controller extends _Controller {
 					$this->Cart_Cart_Rule->delete_by_primary_key($cart_discount['id_cart_cart_rule']);
 				}
 			}
-			
+
 			return;
 		}
-		
+
 		// Discount has been removed
-		if (!isset($cart['user_id_cart_rule']) 
+		if (!isset($cart['user_id_cart_rule'])
 			|| empty($cart['user_id_cart_rule'])
 		) {
 			if (!empty($cart_discounts)) {
@@ -1825,13 +1825,13 @@ class Cart_Controller extends _Controller {
 			return;
 		}
 
-		if (!empty($membership_level) 
-			&& isset($cart['user_id_cart_rule']) 
-			&& !empty($cart['user_id_cart_rule']) 
+		if (!empty($membership_level)
+			&& isset($cart['user_id_cart_rule'])
+			&& !empty($cart['user_id_cart_rule'])
 			&& !empty($membership_discounts[$cart['user_id_cart_rule']])
 		) {
 			$membership_discount = $membership_discounts[$cart['user_id_cart_rule']][0];
-			
+
 			$found_membership_discount = false;
 
 			if (!empty($cart_discounts)) {
@@ -1866,11 +1866,11 @@ class Cart_Controller extends _Controller {
 			}
 
 		}
-		
+
 		return;
 	}
 	*/
-	
+
 	private function get_user_points($user_id) {
 		$this->load('Dw_User_Point', DW_API_HOST, DW_API_USER, DW_API_PASSWORD, DW_API_DATABASE);
 

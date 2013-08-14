@@ -1,13 +1,10 @@
 <?
-error_reporting(E_ALL);
-ini_set('display_errors', '1');
 session_start();
 
 require_once 'config/config.php';
 
 //require_once 'controllers/_Controller.php';
 //require_once 'controllers/Account_Controller.php';
-
 
 define('APP_PATH', realpath('./')."/");
 $include_paths = explode(":", get_include_path());
@@ -48,10 +45,10 @@ try {
 	if (empty($response_format) || empty($request_methods[$response_format])) {
 		die('Invalid response format.');
 	}
-	
+
 	// Do Request
 	$request_method = !empty($request_methods[$response_format]) ? $request_methods[$response_format] : NULL;
-	
+
 	// SOAP Call
 	if ($request_method == 'SOAP') {
 		$SoapServer = new SoapServer(
@@ -64,14 +61,14 @@ try {
 		$SoapServer->handle();
 		die();
 	}
-	
+
 	// REST Call
 	else if ($request_method == 'REST' ) {
         /** @var  $controller _Controller */
 
         header( sprintf("Content-Type: application/%s", $response_format));
 		$result = $controller->process_request($request);
-		
+
 		// JSON
 		if ($response_format == 'json') {
 			echo json_pretty($result);
@@ -80,12 +77,12 @@ try {
 		else if ($response_format == 'jsonp') {
 			echo '?(' . json_pretty($result) . ')';
 		}
-		
+
 		die();
 	}
-	
+
 } catch (Exception $e) {
-	die($e->getMessage());	
+	die($e->getMessage());
 }
 
 
