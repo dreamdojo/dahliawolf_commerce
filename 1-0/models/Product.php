@@ -120,18 +120,20 @@ class Product extends _Model {
 		}
 	}
 
-	public function get_products($id_shop, $id_lang, $user_id = NULL) {
-		$sql = '
+	public function get_products($id_shop, $id_lang, $user_id = NULL)
+    {
+		$sql = "
 		SELECT product.*, product_lang.name AS product_lang_name, product_lang.name AS product_name, shop.name AS shop_name, lang.name AS lang_name, supplier.name AS supplier, manufacturer.name AS manufacturer, default_shop.name AS default_shop_name, tax_rules_group.name AS tax_rules_group, product_lang.description, product_lang.description_short, product_lang.meta_description, product_lang.meta_keywords, product_lang.meta_title, customer.username, (SELECT product_file.product_file_id FROM offline_commerce_v1_2013.product_file WHERE product_file.product_id = product.id_product ORDER BY product_file.product_file_id ASC LIMIT 1) AS product_file_id, IF(EXISTS(SELECT category_product.id_category_product FROM offline_commerce_v1_2013.category_product WHERE category_product.id_category = 1 AND category_product.id_product = product.id_product), 1, 0) AS is_new
 			, mm.posting_ids
 			, IF(like_winner.like_winner_id IS NOT NULL, 1, 0) AS is_winner
+			, wishlist.wishlist_count
 		FROM offline_commerce_v1_2013.product
 			LEFT JOIN
 			(
 				SELECT m.*, posting_product.posting_id, posting_product.product_id
 				FROM
 				(
-					SELECT MIN(posting_product.created) AS pp_created, GROUP_CONCAT(posting_product.posting_id SEPARATOR \'|\') AS posting_ids
+					SELECT MIN(posting_product.created) AS pp_created, GROUP_CONCAT(posting_product.posting_id SEPARATOR '|') AS posting_ids
 					FROM dahliawolf_v1_2013.posting
 						INNER JOIN dahliawolf_v1_2013.posting_product ON posting.posting_id = posting_product.posting_id
 					GROUP BY posting_product.product_id
@@ -139,7 +141,6 @@ class Product extends _Model {
 				INNER JOIN dahliawolf_v1_2013.posting_product ON posting_product.created = m.pp_created
 			) AS mm ON product.id_product = mm.product_id
 			LEFT JOIN dahliawolf_v1_2013.like_winner ON mm.posting_id = like_winner.posting_id
-
 			INNER JOIN offline_commerce_v1_2013.product_shop ON product.id_product = product_shop.id_product
 			INNER JOIN offline_commerce_v1_2013.shop ON product_shop.id_shop = shop.id_shop
 			INNER JOIN offline_commerce_v1_2013.product_lang ON product.id_product = product_lang.id_product
@@ -150,7 +151,17 @@ class Product extends _Model {
 			LEFT JOIN offline_commerce_v1_2013.shop AS default_shop ON product.id_shop_default = default_shop.id_shop
 			LEFT JOIN offline_commerce_v1_2013.tax_rules_group ON product.id_tax_rules_group = tax_rules_group.id_tax_rules_group
 			LEFT JOIN offline_commerce_v1_2013.customer ON product.user_id = customer.user_id
-        WHERE shop.id_shop = :id_shop AND lang.id_lang = :id_lang AND product_shop.active = :active';
+
+			LEFT JOIN (
+				select count(*) as 'wishlist_count',
+				sub_wishlist.id_product as 'id_product'
+				FROM offline_commerce_v1_2013.favorite_product AS sub_wishlist
+					INNER JOIN offline_commerce_v1_2013.product AS sub_product ON sub_wishlist.id_product = sub_product.id_product
+				WHERE sub_wishlist.id_product = sub_product.id_product
+				GROUP BY sub_wishlist.id_product
+			) AS wishlist ON wishlist.id_product = product.id_product
+
+        WHERE shop.id_shop = :id_shop AND lang.id_lang = :id_lang AND product_shop.active = :active";
 		//product.status != :not_status AND
 		if (!empty($user_id)) {
 			$sql .= ' AND product.user_id = :user_id';
@@ -170,6 +181,8 @@ class Product extends _Model {
 		if (!empty($user_id)) {
 			$params[':user_id'] = $user_id;
 		}
+
+        //var_dump($sql);
 
 		try {
 			$data = self::$dbs[$this->db_host][$this->db_name]->exec($sql, $params);
