@@ -14,7 +14,7 @@ class Product extends _Model {
 
 
 		$sql = "
-		SELECT product.*
+		SELECT DISTINCT product.*
 			, product_lang.name AS product_lang_name, product_lang.name AS product_name
 			, shop.name AS shop_name
 			, lang.name AS lang_name
