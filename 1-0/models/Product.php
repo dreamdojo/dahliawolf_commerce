@@ -146,7 +146,7 @@ class Product extends _Model {
 		        product_lang.description, product_lang.description_short, product_lang.meta_description, product_lang.meta_keywords, product_lang.meta_title,
 		        (SELECT product_file.product_file_id FROM offline_commerce_v1_2013.product_file WHERE product_file.product_id = product.id_product ORDER BY product_file.product_file_id ASC LIMIT 1) AS product_file_id,
 		        IF(EXISTS(SELECT category_product.id_category_product FROM offline_commerce_v1_2013.category_product WHERE category_product.id_category = 1 AND category_product.id_product = product.id_product), 1, 0) AS is_new,
-		        user_username.username as username,
+		        user_username.username as username, IF(user_username.location IS NULL, '', user_username.location) AS 'location',
 			    mm.posting_ids,
 			    IF(like_winner.like_winner_id IS NOT NULL, 1, 0) AS is_winner,
 			    wishlist.wishlist_count,
