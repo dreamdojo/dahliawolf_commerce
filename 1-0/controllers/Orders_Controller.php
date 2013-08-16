@@ -1124,7 +1124,7 @@ class Orders_Controller extends _Controller {
 
 			// Reverse user points and
 			$this->reverse_points($params['id_order']);
-			$this->reverse_commissions($params['id_order']);
+			$this->reverse_commissions($params['id_order'], 'Void Order');
 
 			// Restore quantity
 			$this->restore_quantity($params['id_order']);
@@ -1299,7 +1299,7 @@ class Orders_Controller extends _Controller {
 
 			// Reverse user points and
 			$this->reverse_points($params['id_order']);
-			$this->reverse_commissions($params['id_order']);
+			$this->reverse_commissions($params['id_order'], 'Return Order');
 
 			// Restore quantity
 			$this->restore_quantity($params['id_order']);
@@ -1337,10 +1337,28 @@ class Orders_Controller extends _Controller {
 		$this->Dw_User_Point->delete_order_points($id_order);
 	}
 
-	private function reverse_commissions($id_order) {
+	private function reverse_commissions($id_order, $note = '') {
 		$this->load('Commission');
 
-		$this->Commission->delete_order_commissions($id_order);
+		$commissions = $this->Commission->get_rows(
+			array(
+				'id_order' => $id_order
+			)
+		);
+
+		// Copy commission rows, but flip commission amount
+		if (!empty($commissions)) {
+			foreach ($commissions as $commission) {
+				$commission_data = array(
+					'user_id' => $commission['user_id']
+					, 'id_order' => $commission['id_order']
+					, 'id_product' => $commission['id_product']
+					, 'commission' => -1 * $commission['commission']
+					, 'note' => $note
+				);
+				$this->Commission->save($commission_data);
+			}
+		}
 	}
 
 	private function restore_quantity($id_order) {

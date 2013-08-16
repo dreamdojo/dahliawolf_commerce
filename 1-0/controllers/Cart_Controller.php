@@ -431,6 +431,7 @@ class Cart_Controller extends _Controller {
 
 				if (!empty($data['carrier_options'])) {
 					$carrier_option_rows = rows_to_groups($data['carrier_options'], 'id_delivery');
+
 					$data['cart']['carrier'] = $data['carrier_options'][0];
 					if (!empty($params['id_delivery'])) {
 						if (array_key_exists($params['id_delivery'], $carrier_option_rows)) {
