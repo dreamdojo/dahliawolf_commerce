@@ -1124,7 +1124,7 @@ class Orders_Controller extends _Controller {
 
 			// Reverse user points and
 			$this->reverse_points($params['id_order']);
-			$this->reverse_commissions($params['id_order']);
+			$this->reverse_commissions($params['id_order'], 'Void Order');
 
 			// Restore quantity
 			$this->restore_quantity($params['id_order']);
@@ -1299,7 +1299,7 @@ class Orders_Controller extends _Controller {
 
 			// Reverse user points and
 			$this->reverse_points($params['id_order']);
-			$this->reverse_commissions($params['id_order']);
+			$this->reverse_commissions($params['id_order'], 'Return Order');
 
 			// Restore quantity
 			$this->restore_quantity($params['id_order']);
@@ -1337,10 +1337,28 @@ class Orders_Controller extends _Controller {
 		$this->Dw_User_Point->delete_order_points($id_order);
 	}
 
-	private function reverse_commissions($id_order) {
+	private function reverse_commissions($id_order, $note = '') {
 		$this->load('Commission');
 
-		$this->Commission->delete_order_commissions($id_order);
+		$commissions = $this->Commission->get_rows(
+			array(
+				'id_order' => $id_order
+			)
+		);
+
+		// Copy commission rows, but flip commission amount
+		if (!empty($commissions)) {
+			foreach ($commissions as $commission) {
+				$commission_data = array(
+					'user_id' => $commission['user_id']
+					, 'id_order' => $commission['id_order']
+					, 'id_product' => $commission['id_product']
+					, 'commission' => -1 * $commission['commission']
+					, 'note' => $note
+				);
+				$this->Commission->save($commission_data);
+			}
+		}
 	}
 
 	private function restore_quantity($id_order) {
@@ -1358,6 +1376,139 @@ class Orders_Controller extends _Controller {
 
 			}
 		}
+	}
+	
+	public function send_customer_confirmation_email($params = array()) {
+		$this->load('Customer');
+		$this->load('Orders');
+		$this->load('User', ADMIN_API_HOST, ADMIN_API_USER, ADMIN_API_PASSWORD, ADMIN_API_DATABASE);
+		$this->load('Order_Detail');
+
+		$data = array();
+
+		$validate_names = array(
+			'user_id' => NULL
+			, 'id_order' => NULL
+		);
+
+		$validate_params = array_merge($validate_names, $params);
+
+		// Validations
+		$input_validations = array(
+			'id_order' => array(
+				'label' => 'Order ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+		);
+
+		$this->Validate->add_many($input_validations, $validate_params, true);
+		$this->Validate->run();
+
+		$now = _Model::$date_time;
+		
+		// Get Order Details
+		$cart = array(
+			'cart' => array(
+				'totals' => array()
+			)
+			, 'products' => array()
+		);
+		
+		// Get Order
+		$details = $this->Orders->get_row(
+			array(
+				'id_order' => $params['id_order']
+			)
+		);
+		
+		if (empty($details)) {
+			_Model::$Exception_Helper->request_failed_exception('Order not found.');
+		}
+		
+		// Get Customer
+		$customer = $this->Customer->get_row(
+			array(
+				'id_customer' => $details['id_customer']
+			)
+		);
+
+		if (empty($customer)) {
+			_Model::$Exception_Helper->request_failed_exception('Customer not found.');
+		}
+		
+		// Get User
+		$user = $this->User->get_row(
+			array(
+				'user_id' => $customer['user_id']
+			)
+		);
+		
+		if (empty($user)) {
+			_Model::$Exception_Helper->request_failed_exception('User not found.');
+		}
+		
+		$cart['cart']['totals'] = array(
+			'products' => $details['total_products']
+			, 'product_tax' => $details['product_tax']
+			, 'shipping' => $details['total_shipping']
+			, 'shipping_tax' => $details['shipping_tax']
+			, 'discounts' => $details['total_discounts']
+			, 'discount_tax' => $details['discount_tax']
+			, 'grand_total' => $details['total']
+		);
+		
+		$products = $this->Order_Detail->get_rows(
+			array(
+				'id_order' => $params['id_order']
+			)
+		);
+		
+		if (!empty($products)) {
+			foreach ($products as $product) {
+				$product_info = array(
+					'quantity' => $product['product_quantity']
+					, 'product_info' => array(
+						'product_lang_name' => $product['product_name']
+						, 'price' => $product['product_price']
+					)
+				);
+				array_push($cart['products'], $product_info);
+			}
+		}
+		
+		// Send email to user
+		$this->load('Config', ADMIN_API_HOST, ADMIN_API_USER, ADMIN_API_PASSWORD, ADMIN_API_DATABASE);
+		$email_domain = 'dahliawolf.com';
+		$order_email_prefix = $this->Config->get_value('Orders From Email Prefix');
+		$from_email = $order_email_prefix . '@' . $email_domain;
+
+		$subject = 'Order Confirmation';
+		$custom_variables = array(
+			'email' => $user['email']
+			, 'site_name' => $email_domain
+			, 'domain' => $email_domain
+			, 'cart' => $cart
+		);
+		
+		$template_variables = array(
+			'first_name' => $user['first_name']
+			, 'email' => $user['email']
+			, 'domain' => $email_domain
+			, 'site_name' => $email_domain
+			, 'cdn_domain' => ''
+		);
+
+		$Email_Template_Helper = new Email_Template_Helper();
+		$email_results = $Email_Template_Helper->sendEmail('order-confirmation', $custom_variables, $template_variables, $email_domain, $from_email, $user['first_name'] . ' ' . $user['last_name'], $user['email'], $subject, $from_email);
+		
+		if (!$email_results['sent']) {
+			_Model::$Exception_Helper->request_failed_exception('Email not sent: ' . $email_results['error']);
+		}
+		
+		return static::wrap_result(true, NULL, _Model::$Status_Code->get_status_code_no_content());
 	}
 }
 
