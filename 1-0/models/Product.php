@@ -143,6 +143,7 @@ class Product extends _Model {
 		        manufacturer.name AS manufacturer,
 		        default_shop.name AS default_shop_name,
 		        tax_rules_group.name AS tax_rules_group,
+		        IF(product_shop.position IS NULL, 999999, product_shop.position) AS 'position',
 		        product_lang.description, product_lang.description_short, product_lang.meta_description, product_lang.meta_keywords, product_lang.meta_title,
 		        (SELECT product_file.product_file_id FROM offline_commerce_v1_2013.product_file WHERE product_file.product_id = product.id_product ORDER BY product_file.product_file_id ASC LIMIT 1) AS product_file_id,
 		        IF(EXISTS(SELECT category_product.id_category_product FROM offline_commerce_v1_2013.category_product WHERE category_product.id_category = 1 AND category_product.id_product = product.id_product), 1, 0) AS is_new,
@@ -198,7 +199,7 @@ class Product extends _Model {
 		}
 
 		$sql .= '
-            ORDER BY product_shop.position ASC, product.id_product DESC
+            ORDER BY position ASC, product.id_product DESC
 		';
 
 		$params = array(
