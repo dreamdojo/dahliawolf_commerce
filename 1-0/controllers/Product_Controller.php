@@ -271,14 +271,14 @@ class Product_Controller extends _Controller {
 		);
 
 		// Also set user_id product row
-		$posting = $this->Dw->Posting_Product->get_posting($posting_product['posting_product_id']);
-		$this->Product->db_update(
+		$posting = $this->Dw_Posting_Product->get_posting($posting_product['posting_product_id']);
+		$test = $this->Product->db_update(
 			array(
 				'user_id' => $posting['user_id']
 			)
-			, 'product_id = :product_id'
+			, 'id_product = :id_product'
 			, array(
-				':product_id' => $posting['product_id']
+				':id_product' => $posting['product_id']
 			)
 		);
 
