@@ -5,12 +5,23 @@ class Product extends _Model {
 	const PRIMARY_KEY_FIELD = 'id_product';
 
 	// 3/1/2013
-	public function get_product($id_product, $id_shop, $id_lang, $user_id = NULL)
+	public function get_product($id_product, $id_shop, $id_lang, $user_id = NULL,  $viewer_user_id=null)
     {
-        $join_sql = '';
+        $extra_join_sql = '';
+        $extra_select_str = '';
+
         if (!empty($user_id)) {
-            $join_sql = ' LEFT JOIN offline_commerce_v1_2013.favorite_product AS wishlist   ON wishlist.id_product = product.id_product  AND wishlist.id_customer = :user_id';
+            $extra_join_sql = ' LEFT JOIN offline_commerce_v1_2013.favorite_product AS wishlist   ON wishlist.id_product = product.id_product  AND wishlist.id_customer = :user_id';
         }
+
+
+        if($viewer_user_id)
+        {
+            $extra_join_sql .= 'LEFT JOIN dahliawolf_v1_2013.follow AS follow ON customer.user_id = follow.user_id AND follow.follower_user_id = :viewer_user_id';
+            $extra_select_str .= ', IF(follow.user_id IS NULL, 0, 1) AS is_following';
+        }
+
+        //$values[':viewer_user_id'] = $params['where']['viewer_user_id'];
 
 
 		$sql = "
@@ -30,6 +41,7 @@ class Product extends _Model {
 			, IF(EXISTS(SELECT category_product.id_category_product FROM offline_commerce_v1_2013.category_product WHERE category_product.id_category = 1 AND category_product.id_product = product.id_product), 1, 0) AS is_new
 			, mm.posting_ids
 			, IF(like_winner.like_winner_id IS NOT NULL, 1, 0) AS is_winner
+			{$extra_select_str}
 		FROM offline_commerce_v1_2013.product
 			LEFT JOIN
 			(
@@ -57,7 +69,7 @@ class Product extends _Model {
 			LEFT JOIN offline_commerce_v1_2013.customer ON product.user_id = customer.user_id
 			/*LEFT JOIN dahliawolf_v1_2013.posting ON posting.product_id = mm.product_id
 			LEFT JOIN dahliawolf_v1_2013.user_username AS product_username ON posting.user_id = user_username.user_id*/
-			{$join_sql}
+			{$extra_join_sql}
 
         WHERE product.id_product = :id_product AND shop.id_shop = :id_shop AND lang.id_lang = :id_lang AND product_shop.active = :active
 		";
@@ -76,6 +88,13 @@ class Product extends _Model {
 		if (!empty($user_id)) {
 			$params[':user_id'] = $user_id;
 		}
+
+        if (!empty($viewer_user_id)) {
+			$params[':viewer_user_id'] = $viewer_user_id;
+		}
+
+        if(isset($_GET['t'])) var_dump($sql);
+
 
 		try {
 			$data = self::$dbs[$this->db_host][$this->db_name]->select_single($sql, $params);
