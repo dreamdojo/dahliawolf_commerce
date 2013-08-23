@@ -50,8 +50,9 @@ class Product_Controller extends _Controller {
 		$this->Validate->run();
 
 		$user_id = !empty($params['user_id']) ? $params['user_id'] : NULL;
+        $viewer_user_id = !empty($params['viewer_user_id']) ? $params['viewer_user_id'] : NULL;
 
-		$data['product'] = $this->Product->get_product($params['id_product'], $params['id_shop'], $params['id_lang'], $user_id);
+		$data['product'] = $this->Product->get_product($params['id_product'], $params['id_shop'], $params['id_lang'], $user_id, $viewer_user_id);
 
 		if (empty($data['product'])) {
 			$error = 'Product not found.';
