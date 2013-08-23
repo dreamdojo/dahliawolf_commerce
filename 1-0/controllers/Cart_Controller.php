@@ -274,8 +274,8 @@ class Cart_Controller extends _Controller {
 		$data['cart'] = $this->Cart->get_user_cart($params['user_id'], $params['id_shop'], $params['id_cart']);
 
 		if (!empty($data['cart'])) {
-			// Add membership discount
 
+			// Add membership discount
 			$this->add_membership_discount($params['user_id'], $data['cart']['id_cart'], $params['id_lang']);
 
 			///////////////////////////
