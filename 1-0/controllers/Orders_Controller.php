@@ -11,6 +11,7 @@ class Orders_Controller extends _Controller {
 		$this->load('Order_Detail');
 		$this->load('Order_Detail_Tax');
 		$this->load('Payment_Method', ADMIN_API_HOST, ADMIN_API_USER, ADMIN_API_PASSWORD, ADMIN_API_DATABASE);
+		$this->load('Commission');
 
 		$data = array();
 
@@ -199,6 +200,14 @@ class Orders_Controller extends _Controller {
 		}
 		else if (empty($cart['cart']['carrier'])) {
 			_Model::$Exception_Helper->request_failed_exception('Invalid Carrier.');
+		}
+
+		// If redeeming commissions, check that cart_commission amount does not exceed user's commissions
+		if (!empty($cart['cart_commission'])) {
+			$user_total_commissions = $this->Commission->get_user_total($params['user_id']);
+			if ($user_total_commissions['total_commissions'] < $cart['cart_commission']['amount']) {
+				_Model::$Exception_Helper->request_failed_exception('Commission redemption amount exceeds total earned commissions.');
+			}
 		}
 
 		// Process Payment
@@ -557,7 +566,6 @@ class Orders_Controller extends _Controller {
 
 		// Credit commissions
 		// For each product, credit product.user_id with product.commission * quantity
-		$this->load('Commission');
 		foreach ($cart['products'] as $i => $product) {
 			if (!empty($product['product_info']['user_id'])) {
 				$commission_data = array(
@@ -568,6 +576,17 @@ class Orders_Controller extends _Controller {
 				);
 				$this->Commission->save($commission_data);
 			}
+		}
+
+		// Deduct redeemed commissions
+		if (!empty($cart['cart_commission']) && !empty($cart['cart_commission']['amount'])) {
+			$redeemed_commission_data = array(
+				'user_id' => $params['user_id']
+				, 'id_order' => $data['id_order']
+				, 'commission' => -1 * $cart['cart_commission']['amount']
+				, 'note' => 'Commission Redemption'
+			);
+			$this->Commission->save($redeemed_commission_data);
 		}
 
 		return static::wrap_result(true, $data);
@@ -723,6 +742,7 @@ class Orders_Controller extends _Controller {
 		$this->load('Order_Detail_Tax');
 		$this->load('Order_Cart_Rule');
 		$this->load('Product');
+		$this->load('Cart_Commission');
 		$this->load('Address', ADMIN_API_HOST, ADMIN_API_USER, ADMIN_API_PASSWORD, ADMIN_API_DATABASE);
 		$this->load('Dw_User_Point', DW_API_HOST, DW_API_USER, DW_API_PASSWORD, DW_API_DATABASE);
 
@@ -809,6 +829,13 @@ class Orders_Controller extends _Controller {
 		$order['discounts'] = $this->Order_Cart_Rule->get_rows(
 			array(
 				'id_order' => $params['id_order']
+			)
+		);
+
+		// Cart Commission
+		$order['cart_commission'] = $this->Cart_Commission->get_row(
+			array(
+				'id_cart' => $order['id_cart']
 			)
 		);
 
@@ -1377,7 +1404,7 @@ class Orders_Controller extends _Controller {
 			}
 		}
 	}
-	
+
 	public function send_customer_confirmation_email($params = array()) {
 		$this->load('Customer');
 		$this->load('Orders');
@@ -1408,7 +1435,7 @@ class Orders_Controller extends _Controller {
 		$this->Validate->run();
 
 		$now = _Model::$date_time;
-		
+
 		// Get Order Details
 		$cart = array(
 			'cart' => array(
@@ -1416,18 +1443,18 @@ class Orders_Controller extends _Controller {
 			)
 			, 'products' => array()
 		);
-		
+
 		// Get Order
 		$details = $this->Orders->get_row(
 			array(
 				'id_order' => $params['id_order']
 			)
 		);
-		
+
 		if (empty($details)) {
 			_Model::$Exception_Helper->request_failed_exception('Order not found.');
 		}
-		
+
 		// Get Customer
 		$customer = $this->Customer->get_row(
 			array(
@@ -1438,18 +1465,18 @@ class Orders_Controller extends _Controller {
 		if (empty($customer)) {
 			_Model::$Exception_Helper->request_failed_exception('Customer not found.');
 		}
-		
+
 		// Get User
 		$user = $this->User->get_row(
 			array(
 				'user_id' => $customer['user_id']
 			)
 		);
-		
+
 		if (empty($user)) {
 			_Model::$Exception_Helper->request_failed_exception('User not found.');
 		}
-		
+
 		$cart['cart']['totals'] = array(
 			'products' => $details['total_products']
 			, 'product_tax' => $details['product_tax']
@@ -1459,13 +1486,13 @@ class Orders_Controller extends _Controller {
 			, 'discount_tax' => $details['discount_tax']
 			, 'grand_total' => $details['total']
 		);
-		
+
 		$products = $this->Order_Detail->get_rows(
 			array(
 				'id_order' => $params['id_order']
 			)
 		);
-		
+
 		if (!empty($products)) {
 			foreach ($products as $product) {
 				$product_info = array(
@@ -1478,7 +1505,7 @@ class Orders_Controller extends _Controller {
 				array_push($cart['products'], $product_info);
 			}
 		}
-		
+
 		// Send email to user
 		$this->load('Config', ADMIN_API_HOST, ADMIN_API_USER, ADMIN_API_PASSWORD, ADMIN_API_DATABASE);
 		$email_domain = 'dahliawolf.com';
@@ -1492,7 +1519,7 @@ class Orders_Controller extends _Controller {
 			, 'domain' => $email_domain
 			, 'cart' => $cart
 		);
-		
+
 		$template_variables = array(
 			'first_name' => $user['first_name']
 			, 'email' => $user['email']
@@ -1503,11 +1530,11 @@ class Orders_Controller extends _Controller {
 
 		$Email_Template_Helper = new Email_Template_Helper();
 		$email_results = $Email_Template_Helper->sendEmail('order-confirmation', $custom_variables, $template_variables, $email_domain, $from_email, $user['first_name'] . ' ' . $user['last_name'], $user['email'], $subject, $from_email);
-		
+
 		if (!$email_results['sent']) {
 			_Model::$Exception_Helper->request_failed_exception('Email not sent: ' . $email_results['error']);
 		}
-		
+
 		return static::wrap_result(true, NULL, _Model::$Status_Code->get_status_code_no_content());
 	}
 }
