@@ -171,6 +171,17 @@ class Orders_Controller extends _Controller {
 		if (empty($billing_address_info)) {
 			_Model::$Exception_Helper->request_failed_exception('Billing address not found.');
 		}
+		
+		$shipping_address_info = $Address_Controller->get_hq_user_address_info(
+			array(
+				'user_id' => $params['user_id']
+				, 'address_id' => $params['shipping_address_id']
+			)
+		);
+
+		if (empty($shipping_address_info)) {
+			_Model::$Exception_Helper->request_failed_exception('Shipping address not found.');
+		}
 
 		// Get cart
 		$Cart_Controller = new Cart_Controller();
@@ -233,6 +244,17 @@ class Orders_Controller extends _Controller {
 						"city" => $billing_address_info['address']['city'],
 						"state"	=> $billing_address_info['address']['state'],
 						"zip" => $billing_address_info['address']['zip'],
+						'country' => $billing_address_info['address']['country']
+					)
+					, 'shipping_address' => array(
+						"first_name" => $shipping_address_info['address']['first_name'],
+						"last_name" => $shipping_address_info['address']['last_name'],
+						"street" => $shipping_address_info['address']['street'],
+						"street_2" => $shipping_address_info['address']['street_2'],
+						"city" => $shipping_address_info['address']['city'],
+						"state"	=> $shipping_address_info['address']['state'],
+						"zip" => $shipping_address_info['address']['zip'],
+						'country' => $shipping_address_info['address']['country']
 					)
 				)
 			);
