@@ -214,18 +214,24 @@ class Orders_Controller extends _Controller {
 			_Model::$Exception_Helper->request_failed_exception('Invalid Carrier.');
 		}
 
-		// If redeeming commissions, check that cart_commission amount does not exceed user's commissions
+		// If redeeming commissions, check that cart_commission amount does not exceed user's commissions or cart total
 		if (!empty($cart['cart_commission'])) {
 			$user_total_commissions = $this->Commission->get_user_total($params['user_id']);
 			if ($user_total_commissions['total_commissions'] < $cart['cart_commission']['amount']) {
 				_Model::$Exception_Helper->request_failed_exception('Commission redemption amount exceeds total earned commissions.');
 			}
+			if ($cart['cart']['totals']['grand_total'] < $cart['cart_commission']['amount']) {
+				_Model::$Exception_Helper->request_failed_exception('Commission redemption amount exceeds cart total.');
+			}
 		}
-		// If redeeming store credits, check that cart_store_credit amount does not exceed user's store credits
+		// If redeeming store credits, check that cart_store_credit amount does not exceed user's store credits or cart total
 		if (!empty($cart['cart_store_credit'])) {
 			$user_total_credits = $this->Store_Credit->get_user_total($params['user_id']);
 			if ($user_total_credits['total_credits'] < $cart['cart_store_credit']['amount']) {
 				_Model::$Exception_Helper->request_failed_exception('Store credit redemption amount exceeds total store credits.');
+			}
+			if ($cart['cart']['totals']['grand_total'] < $cart['cart_store_credit']['amount']) {
+				_Model::$Exception_Helper->request_failed_exception('Store credit redemption amount exceeds cart total.');
 			}
 		}
 

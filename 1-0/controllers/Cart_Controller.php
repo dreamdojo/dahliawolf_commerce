@@ -2031,6 +2031,13 @@ class Cart_Controller extends _Controller {
 					, 'is_int' => NULL
 				)
 			)
+			, 'id_lang' => array(
+				'label' => 'Language Id'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
 			, 'id_shop' => array(
 				'label' => 'Shop ID'
 				, 'rules' => array(
@@ -2055,11 +2062,21 @@ class Cart_Controller extends _Controller {
 		if (empty($cart)) {
 			_Model::$Exception_Helper->request_failed_exception('Cart not found.');
 		}
+		$db_cart = $this->get_cart_from_db($params);
 
 		// Check the commission amount does not exceed user's total commissions
 		$user_total = $this->Commission->get_user_total($params['user_id']);
 		if ($user_total['total_commissions'] < $params['amount']) {
+			$this->Cart_Commission->save_cart_commission($cart['id_cart'], 0);
+
 			_Model::$Exception_Helper->request_failed_exception('Commission redemption amount exceeds total earned commissions.');
+		}
+
+		// Check the commission amount does not exceed cart total
+		if ($db_cart['data']['cart']['totals']['grand_total'] < $params['amount']) {
+			$this->Cart_Commission->save_cart_commission($cart['id_cart'], 0);
+
+			_Model::$Exception_Helper->request_failed_exception('Commission redemption amount exceeds cart total.');
 		}
 
 		$this->Cart_Commission->save_cart_commission($cart['id_cart'], $params['amount']);
@@ -2094,6 +2111,13 @@ class Cart_Controller extends _Controller {
 					, 'is_int' => NULL
 				)
 			)
+			, 'id_lang' => array(
+				'label' => 'Language Id'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
 			, 'id_shop' => array(
 				'label' => 'Shop ID'
 				, 'rules' => array(
@@ -2118,11 +2142,21 @@ class Cart_Controller extends _Controller {
 		if (empty($cart)) {
 			_Model::$Exception_Helper->request_failed_exception('Cart not found.');
 		}
+		$db_cart = $this->get_cart_from_db($params);
 
-		// Check the commission amount does not exceed user's total commissions
+		// Check the store credit amount does not exceed user's total store credits
 		$user_total = $this->Store_Credit->get_user_total($params['user_id']);
 		if ($user_total['total_credits'] < $params['amount']) {
+			$this->Cart_Store_Credit->save_cart_store_credit($cart['id_cart'], 0);
+
 			_Model::$Exception_Helper->request_failed_exception('Store credit redemption amount exceeds total store credits.');
+		}
+
+		// Check the store credit amount does not exceed cart total
+		if ($db_cart['data']['cart']['totals']['grand_total'] < $params['amount']) {
+			$this->Cart_Store_Credit->save_cart_store_credit($cart['id_cart'], 0);
+
+			_Model::$Exception_Helper->request_failed_exception('Store credit redemption amount exceeds cart total.');
 		}
 
 		$this->Cart_Store_Credit->save_cart_store_credit($cart['id_cart'], $params['amount']);
