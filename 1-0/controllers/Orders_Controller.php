@@ -12,6 +12,7 @@ class Orders_Controller extends _Controller {
 		$this->load('Order_Detail_Tax');
 		$this->load('Payment_Method', ADMIN_API_HOST, ADMIN_API_USER, ADMIN_API_PASSWORD, ADMIN_API_DATABASE);
 		$this->load('Commission');
+		$this->load('Store_Credit');
 
 		$data = array();
 
@@ -171,7 +172,7 @@ class Orders_Controller extends _Controller {
 		if (empty($billing_address_info)) {
 			_Model::$Exception_Helper->request_failed_exception('Billing address not found.');
 		}
-		
+
 		$shipping_address_info = $Address_Controller->get_hq_user_address_info(
 			array(
 				'user_id' => $params['user_id']
@@ -218,6 +219,13 @@ class Orders_Controller extends _Controller {
 			$user_total_commissions = $this->Commission->get_user_total($params['user_id']);
 			if ($user_total_commissions['total_commissions'] < $cart['cart_commission']['amount']) {
 				_Model::$Exception_Helper->request_failed_exception('Commission redemption amount exceeds total earned commissions.');
+			}
+		}
+		// If redeeming store credits, check that cart_store_credit amount does not exceed user's store credits
+		if (!empty($cart['cart_store_credit'])) {
+			$user_total_credits = $this->Store_Credit->get_user_total($params['user_id']);
+			if ($user_total_credits['total_credits'] < $cart['cart_store_credit']['amount']) {
+				_Model::$Exception_Helper->request_failed_exception('Store credit redemption amount exceeds total store credits.');
 			}
 		}
 
@@ -610,6 +618,16 @@ class Orders_Controller extends _Controller {
 			);
 			$this->Commission->save($redeemed_commission_data);
 		}
+		// Deduct redeemed store credits
+		if (!empty($cart['cart_store_credit']) && !empty($cart['cart_store_credit']['amount'])) {
+			$redeemed_store_credit_data = array(
+				'user_id' => $params['user_id']
+				, 'id_order' => $data['id_order']
+				, 'amount' => -1 * $cart['cart_store_credit']['amount']
+				, 'note' => 'Store Credit Redemption'
+			);
+			$this->Store_Credit->save($redeemed_store_credit_data);
+		}
 
 		return static::wrap_result(true, $data);
 	}
@@ -765,6 +783,7 @@ class Orders_Controller extends _Controller {
 		$this->load('Order_Cart_Rule');
 		$this->load('Product');
 		$this->load('Cart_Commission');
+		$this->load('Cart_Store_Credit');
 		$this->load('Address', ADMIN_API_HOST, ADMIN_API_USER, ADMIN_API_PASSWORD, ADMIN_API_DATABASE);
 		$this->load('Dw_User_Point', DW_API_HOST, DW_API_USER, DW_API_PASSWORD, DW_API_DATABASE);
 
@@ -856,6 +875,12 @@ class Orders_Controller extends _Controller {
 
 		// Cart Commission
 		$order['cart_commission'] = $this->Cart_Commission->get_row(
+			array(
+				'id_cart' => $order['id_cart']
+			)
+		);
+		// Cart Store Credit
+		$order['cart_store_credit'] = $this->Cart_Store_Credit->get_row(
 			array(
 				'id_cart' => $order['id_cart']
 			)

@@ -1,16 +1,16 @@
 <?
-class Cart_Commission extends _Model {
-	const TABLE = 'cart_commission';
-	const PRIMARY_KEY_FIELD = 'id_cart_commission';
+class Cart_Store_Credit extends _Model {
+	const TABLE = 'cart_store_credit';
+	const PRIMARY_KEY_FIELD = 'id_cart_store_credit';
 
 	protected $fields = array(
 		'id_cart'
 		, 'amount'
 	);
 
-	public function save_cart_commission($id_cart, $amount) {
+	public function save_cart_store_credit($id_cart, $amount) {
 		$query = '
-			INSERT INTO cart_commission (id_cart, amount)
+			INSERT INTO cart_store_credit (id_cart, amount)
 			VALUES (:id_cart, :amount)
 			ON DUPLICATE KEY UPDATE amount = :amount
 		';
@@ -25,7 +25,7 @@ class Cart_Commission extends _Model {
 
 			return $id_cart_commission;
 		} catch (Exception $e) {
-			self::$Exception_Helper->server_error_exception('Unable to save cart commission.');
+			self::$Exception_Helper->server_error_exception('Unable to save cart store credit.');
 		}
 	}
 }
