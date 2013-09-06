@@ -7,6 +7,11 @@ class _Controller {
 
 	protected $Validate;
 
+    protected function trace()
+    {
+        $logger = new Jk_Logger( APP_PATH . sprintf('logs/%s.log'), strtolower(get_class($this)));
+    }
+
 	public function __construct() {
 
 		$this->load('_Model', DB_API_HOST, DB_API_USER, DB_API_PASSWORD, DB_API_DATABASE);
