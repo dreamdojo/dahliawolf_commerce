@@ -5,7 +5,7 @@ class Shop extends _Model {
 
 	public function get_primary_shop_store_address($id_shop) {
 		$sql = '
-			SELECT store.address1, store.address2, store.city, store.postcode
+			SELECT store.address1, store.address2, store.city, store.postcode, store.phone
 				, country.iso_code AS country
 				, state.iso_code AS state
 			FROM shop

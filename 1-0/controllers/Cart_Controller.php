@@ -211,6 +211,10 @@ class Cart_Controller extends _Controller {
 		$this->load('Tax_Rule');
 		$this->load('Cart_Rule');
 		$this->load('Dw_User');
+		$this->load('Commission');
+		$this->load('Cart_Commission');
+		$this->load('Store_Credit');
+		$this->load('Cart_Store_Credit');
 
 		$data = array();
 		$error = NULL;
@@ -274,8 +278,8 @@ class Cart_Controller extends _Controller {
 		$data['cart'] = $this->Cart->get_user_cart($params['user_id'], $params['id_shop'], $params['id_cart']);
 
 		if (!empty($data['cart'])) {
-			// Add membership discount
 
+			// Add membership discount
 			$this->add_membership_discount($params['user_id'], $data['cart']['id_cart'], $params['id_lang']);
 
 			///////////////////////////
@@ -426,7 +430,6 @@ class Cart_Controller extends _Controller {
 						, 'shipping_address_id' => $params['shipping_address_id']
 					)
 				);
-				//echo'<pre> CARRIER OPTIONS RESULTS: ';print_r($carrier_options_result);die('Carrier_Controller.php:usps');
 				$data['carrier_options'] = $carrier_options_result['data'];
 
 				if (!empty($data['carrier_options'])) {
@@ -444,6 +447,31 @@ class Cart_Controller extends _Controller {
 						}
 					}
 				}
+			}
+
+
+			// Get available commissions
+			$data['available_commissions'] = $this->Commission->get_user_total($params['user_id']);
+			// Get cart commission redemptions
+			$data['cart_commission'] = $this->Cart_Commission->get_row(
+				array(
+					'id_cart' => $data['cart']['id_cart']
+				)
+			);
+			if (!empty($data['cart_commission'])) {
+				$data['cart']['totals']['discounts'] += $data['cart_commission']['amount'];
+			}
+
+			// Get available store credits
+			$data['available_store_credits'] = $this->Store_Credit->get_user_total($params['user_id']);
+			// Get store credit redemptions
+			$data['cart_store_credit'] = $this->Cart_Store_Credit->get_row(
+				array(
+					'id_cart' => $data['cart']['id_cart']
+				)
+			);
+			if (!empty($data['cart_store_credit'])) {
+				$data['cart']['totals']['discounts'] += $data['cart_store_credit']['amount'];
 			}
 
 			// Calculate shipping
@@ -1980,6 +2008,166 @@ class Cart_Controller extends _Controller {
 		);
 
 		return $this->wrap_result(true, $save);
+	}
+
+	public function save_cart_commission($params = array()) {
+		$this->load('Cart');
+		$this->load('Cart_Commission');
+		$this->load('Commission');
+
+		// Validations
+		$input_validations = array(
+			'user_id' => array(
+				'label' => 'User ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+			, 'id_cart' => array(
+				'label' => 'Card ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+			, 'id_lang' => array(
+				'label' => 'Language Id'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+			, 'id_shop' => array(
+				'label' => 'Shop ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+			, 'amount' => array(
+				'label' => 'Amount'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_number' => NULL
+					, 'is_positive' => NULL
+				)
+			)
+		);
+		$this->Validate->add_many($input_validations, $params, true);
+		$this->Validate->run();
+
+		// Verify cart belongs to user
+		$cart = $this->Cart->get_user_cart($params['user_id'], $params['id_shop'], $params['id_cart']);
+		if (empty($cart)) {
+			_Model::$Exception_Helper->request_failed_exception('Cart not found.');
+		}
+		$db_cart = $this->get_cart_from_db($params);
+
+		// Check the commission amount does not exceed user's total commissions
+		$user_total = $this->Commission->get_user_total($params['user_id']);
+		if ($user_total['total_commissions'] < $params['amount']) {
+			$this->Cart_Commission->save_cart_commission($cart['id_cart'], 0);
+
+			_Model::$Exception_Helper->request_failed_exception('Commission redemption amount exceeds total earned commissions.');
+		}
+
+		// Check the commission amount does not exceed cart total
+		if ($db_cart['data']['cart']['totals']['grand_total'] < $params['amount']) {
+			$this->Cart_Commission->save_cart_commission($cart['id_cart'], 0);
+
+			_Model::$Exception_Helper->request_failed_exception('Commission redemption amount exceeds cart total.');
+		}
+
+		$this->Cart_Commission->save_cart_commission($cart['id_cart'], $params['amount']);
+
+		$cart_commission = $this->Cart_Commission->get_row(
+			array(
+				'id_cart' => $cart['id_cart']
+			)
+		);
+
+		return static::wrap_result(true, $cart_commission);
+	}
+
+	public function save_cart_store_credit($params = array()) {
+		$this->load('Cart');
+		$this->load('Cart_Store_Credit');
+		$this->load('Store_Credit');
+
+		// Validations
+		$input_validations = array(
+			'user_id' => array(
+				'label' => 'User ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+			, 'id_cart' => array(
+				'label' => 'Card ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+			, 'id_lang' => array(
+				'label' => 'Language Id'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+			, 'id_shop' => array(
+				'label' => 'Shop ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+			, 'amount' => array(
+				'label' => 'Amount'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_number' => NULL
+					, 'is_positive' => NULL
+				)
+			)
+		);
+		$this->Validate->add_many($input_validations, $params, true);
+		$this->Validate->run();
+
+		// Verify cart belongs to user
+		$cart = $this->Cart->get_user_cart($params['user_id'], $params['id_shop'], $params['id_cart']);
+		if (empty($cart)) {
+			_Model::$Exception_Helper->request_failed_exception('Cart not found.');
+		}
+		$db_cart = $this->get_cart_from_db($params);
+
+		// Check the store credit amount does not exceed user's total store credits
+		$user_total = $this->Store_Credit->get_user_total($params['user_id']);
+		if ($user_total['total_credits'] < $params['amount']) {
+			$this->Cart_Store_Credit->save_cart_store_credit($cart['id_cart'], 0);
+
+			_Model::$Exception_Helper->request_failed_exception('Store credit redemption amount exceeds total store credits.');
+		}
+
+		// Check the store credit amount does not exceed cart total
+		if ($db_cart['data']['cart']['totals']['grand_total'] < $params['amount']) {
+			$this->Cart_Store_Credit->save_cart_store_credit($cart['id_cart'], 0);
+
+			_Model::$Exception_Helper->request_failed_exception('Store credit redemption amount exceeds cart total.');
+		}
+
+		$this->Cart_Store_Credit->save_cart_store_credit($cart['id_cart'], $params['amount']);
+
+		$cart_store_credit = $this->Cart_Store_Credit->get_row(
+			array(
+				'id_cart' => $cart['id_cart']
+			)
+		);
+
+		return static::wrap_result(true, $cart_store_credit);
 	}
 }
 

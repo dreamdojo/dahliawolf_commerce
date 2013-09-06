@@ -43,6 +43,7 @@ class Order_Detail extends _Model {
 		, 'total_price_tax_excl'
 		, 'unit_price_tax_incl'
 		, 'unit_price_tax_excl'
+		, 'unit_tax'
 		, 'total_shipping_price_tax_incl'
 		, 'total_shipping_price_tax_excl'
 		, 'purchase_supplier_price'

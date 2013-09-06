@@ -78,6 +78,30 @@ class Orders extends _Model {
 			self::$Exception_Helper->server_error_exception('Unable to get order payment details.');
 		}
 	}
+	
+	public function get_user_order_shipping_method($id_order, $user_id) {
+		$query = '
+			SELECT delivery.name AS delivery
+				, carrier.name AS carrier
+			FROM orders
+				INNER JOIN customer ON orders.id_customer = customer.id_customer
+				INNER JOIN delivery ON orders.id_delivery = delivery.id_delivery
+				INNER JOIN carrier ON delivery.id_carrier = carrier.id_carrier
+			WHERE orders.id_order = :id_order AND customer.user_id = :user_id
+		';
+		$values = array(
+			':id_order' => $id_order
+			, ':user_id' => $user_id
+		);
+
+		try {
+			$shipping_method = self::$dbs[$this->db_host][$this->db_name]->select_single($query, $values);
+
+			return $shipping_method;
+		} catch (Exception $e) {
+			self::$Exception_Helper->server_error_exception('Unable to get order payment details.');
+		}
+	}
 
 	/*public function get_points_spent($id_order) {
 		$query = '
@@ -95,5 +119,66 @@ class Orders extends _Model {
 			self::$Exception_Helper->server_error_exception('Unable to get points spent.');
 		}
 	}*/
+
+	public function get_order_details($id_order) {
+		$query = '
+			SELECT orders.*
+				, order_detail.id_order_detail, order_detail.product_quantity
+				, SUM(order_detail_return.product_quantity) AS return_product_quantity
+				, IFNULL(rejected_returns.rejected_quantity, 0) AS rejected_return_quantity
+			FROM orders
+				INNER JOIN order_detail ON orders.id_order = order_detail.id_order
+				LEFT JOIN order_detail_return ON order_detail.id_order_detail = order_detail_return.id_order_detail
+				LEFT JOIN (
+					SELECT order_detail.id_order_detail, SUM(order_detail_return.product_quantity) AS rejected_quantity
+					FROM order_detail
+					INNER JOIN order_detail_return ON order_detail.id_order_detail = order_detail_return.id_order_detail
+					WHERE order_detail_return.status = \'Rejected\'
+					GROUP BY order_detail.id_order_detail
+				) AS rejected_returns ON order_detail.id_order_detail = rejected_returns.id_order_detail
+			WHERE orders.id_order = :id_order
+			GROUP BY order_detail.id_order_detail
+		';
+		$values = array(
+			':id_order' => $id_order
+		);
+
+		try {
+			$order = self::$dbs[$this->db_host][$this->db_name]->exec($query, $values);
+
+			return $order;
+		} catch (Exception $e) {
+			self::$Exception_Helper->server_error_exception('Unable to get order details.');
+		}
+	}
+	
+	public function get_return_shipment_info($id_order, $user_id) {
+		$query = '
+			SELECT orders.id_order, customer.user_id, orders.id_lang, orders.id_shop, orders.id_address_delivery, SUM(IFNULL(order_detail.product_weight, 0) * IFNULL(order_detail_return.product_quantity, 0)) AS total_weight, delivery.code AS service_code, delivery.label_code AS service_label_code, delivery.name AS service_name, delivery.is_intl, carrier.name AS carrier
+			FROM orders
+			INNER JOIN customer ON orders.id_customer = customer.id_customer
+			INNER JOIN delivery ON orders.id_delivery = delivery.id_delivery
+			INNER JOIN carrier ON delivery.id_carrier = carrier.id_carrier
+			INNER JOIN order_detail ON orders.id_order = order_detail.id_order
+			INNER JOIN order_detail_return ON order_detail.id_order_detail = order_detail_return.id_order_detail
+			WHERE orders.id_order = :id_order AND order_detail_return.status = :return_status AND customer.user_id = :user_id
+			GROUP BY orders.id_order
+		';
+		
+		$values = array(
+			':id_order' => $id_order
+			, ':return_status' => 'Pending' 
+			, ':user_id' => $user_id
+		);
+
+		try {
+			$order = self::$dbs[$this->db_host][$this->db_name]->select_single($query, $values);
+
+			return $order;
+		} catch (Exception $e) {
+			self::$Exception_Helper->server_error_exception('Unable to get order return shipment details.');
+		}
+	}
+	
 }
 ?>
