@@ -7,7 +7,9 @@ class Commission extends _Model {
 		'user_id'
 		, 'id_order'
 		, 'id_product'
+		, 'id_order_detail'
 		, 'commission'
+		, 'product_quantity'
 		, 'note'
 	);
 

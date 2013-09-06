@@ -316,6 +316,7 @@ class Carrier_Controller extends _Controller {
 								, 'CountryCode' => $user_address['country']['iso_code']
 								, 'Residential' => '1'
 							);
+							
 							if (!empty($user_address['state'])) {
 								$to_details['StateOrProvinceCode'] = $user_address['state']['iso_code'];
 							}
@@ -408,6 +409,737 @@ class Carrier_Controller extends _Controller {
 
 		return $carriers_return;
 	}
+	
+	public function usps_shipping_label($params = array()) {
+		$this->load('Carrier');
+		$this->load('Configuration');
+		$this->load('Country');
+		$this->load('Shop');
+		$this->load('Config', ADMIN_API_HOST, ADMIN_API_USER, ADMIN_API_PASSWORD, ADMIN_API_DATABASE);
+		$this->load('Order_Shipment');
+
+		$data = array();
+
+		$validate_names = array(
+			'id_shop' => NULL
+			, 'shipping_address_id' => NULL
+			, 'total_product_weight' => NULL
+		);
+
+		$validate_params = array_merge($validate_names, $params);
+
+		// Validations
+		$input_validations = array(
+			'user_id' => array(
+				'label' => 'User ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+			, 'id_shop' => array(
+				'label' => 'Shop ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+			, 'id_lang' => array(
+				'label' => 'Lang ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+			, 'total_product_weight' => array(
+				'label' => 'Total Product Weight'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_decimal' => '2'
+					, 'is_positive' => NULL
+				)
+			)
+			, 'shipping_address_id' => array(
+				'label' => 'Shipping Address ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+		);
+		$this->Validate->add_many($input_validations, $validate_params, true);
+		$this->Validate->run();
+		
+		$is_return_label = !empty($params['return-label']) && $params['return-label'] === true ? true : false;
+		
+		require DR . '/includes/php/classes/shipping/usps/label.php';
+		
+		// Shipping configs
+		$shipping_configs = $this->Config->get_configs_by_section('Shipping APIs');
+
+		// Get shop store address
+		$shop_address = $this->Shop->get_primary_shop_store_address($params['id_shop']);
+		if (empty($shop_address)) {
+			_Model::$Exception_Helper->request_failed_exception('Shop address not found.');
+		}
+		
+		$shop = $this->Shop->get_row(
+			array(
+				'id_shop' => $params['id_shop']
+			)
+		);
+		
+		// Get user hq address info
+		$Address_Controller = new Address_Controller();
+		$user_address = $Address_Controller->get_hq_user_address_info(
+			array(
+				'user_id' => $params['user_id']
+				, 'address_id' => $params['shipping_address_id']
+			)
+		);
+		if (empty($user_address)) {
+			_Model::$Exception_Helper->request_failed_exception('Shipping address not found.');
+		}
+		
+		$country = $this->Country->get_country($user_address['country']['id_country'], $params['id_lang']);
+		if (empty($country)) {
+			_Model::$Exception_Helper->request_failed_exception('Country not found.');
+		}
+			
+		//echo '<pre>'; print_r(USPSLabel()); echo '</pre>';
+		// $shop_address['country']
+		// $username, $from, $to, $ounces
+		//, 'CountryCode' => $user_address['country']['iso_code']
+		
+		if ($is_return_label && $params['is_intl'] === true) {
+			_Model::$Exception_Helper->request_failed_exception('Cannot ship via USPS from this country.');
+		}
+		
+		if ($params['is_intl'] === true) {
+			if (in_array($params['service_label_code'], array('Express'))) {
+				$USPSResponse = USPSIntlExpressLabel(
+					$shipping_configs['USPS API Username']
+					, array(
+						'name' => $shop['name']
+						, 'address' => $shop_address['address1']
+						, 'address2' => $shop_address['address2']
+						, 'city' => $shop_address['city']
+						, 'state' => $shop_address['state']
+						, 'zip' => $shop_address['postcode']
+						, 'phone' => $shop_address['phone']
+					)
+					, array(
+						'first_name' => $user_address['address']['first_name']
+						, 'last_name' => $user_address['address']['last_name']
+						, 'address' => $user_address['address']['street']
+						, 'address2' => $user_address['address']['street_2']
+						, 'city' => $user_address['address']['city']
+						, 'state' => $user_address['state']['iso_code']
+						, 'zip' => $user_address['address']['zip']
+						, 'phone' => $user_address['address']['phone']
+						, 'country' => $country['name']
+					)
+					, $params['items']
+					, $params['total_product_weight'] // ounces
+					, $params['service_label_code']
+				);
+				
+				if (isset($USPSResponse['Error'])) {
+					_Model::$Exception_Helper->request_failed_exception($USPSResponse['Error']['Description']['VALUE']);
+				}
+				
+				$track_url = 'https://tools.usps.com/go/TrackConfirmAction_input?qtc_tLabels1=' . $USPSResponse['ExpressMailIntlResponse']['BarcodeNumber']['VALUE'];
+				$tracking_number = $USPSResponse['ExpressMailIntlResponse']['BarcodeNumber']['VALUE'];
+				$label = $USPSResponse['ExpressMailIntlResponse']['LabelImage']['VALUE'];
+			
+			}
+			else if (in_array($params['service_label_code'], array('Priority'))) {
+				$USPSResponse = USPSIntlPriorityLabel(
+					$shipping_configs['USPS API Username']
+					, array(
+						'name' => $shop['name']
+						, 'address' => $shop_address['address1']
+						, 'address2' => $shop_address['address2']
+						, 'city' => $shop_address['city']
+						, 'state' => $shop_address['state']
+						, 'zip' => $shop_address['postcode']
+						, 'phone' => $shop_address['phone']
+					)
+					, array(
+						'first_name' => $user_address['address']['first_name']
+						, 'last_name' => $user_address['address']['last_name']
+						, 'address' => $user_address['address']['street']
+						, 'address2' => $user_address['address']['street_2']
+						, 'city' => $user_address['address']['city']
+						, 'state' => $user_address['state']['iso_code']
+						, 'zip' => $user_address['address']['zip']
+						, 'phone' => $user_address['address']['phone']
+						, 'country' => $country['name']
+					)
+					, $params['items']
+					, $params['total_product_weight'] // ounces
+					, $params['service_label_code']
+				);
+				
+				if (isset($USPSResponse['Error'])) {
+					_Model::$Exception_Helper->request_failed_exception($USPSResponse['Error']['Description']['VALUE']);
+				}
+				
+				$track_url = 'https://tools.usps.com/go/TrackConfirmAction_input?qtc_tLabels1=' . $USPSResponse['PriorityMailIntlResponse']['BarcodeNumber']['VALUE'];
+				$tracking_number = $USPSResponse['PriorityMailIntlResponse']['BarcodeNumber']['VALUE'];
+				$label = $USPSResponse['PriorityMailIntlResponse']['LabelImage']['VALUE'];
+			
+			}
+			else if (in_array($params['service_label_code'], array('First Class'))) {
+				$USPSResponse = USPSIntlFirstClassLabel(
+					$shipping_configs['USPS API Username']
+					, array(
+						'name' => $shop['name']
+						, 'address' => $shop_address['address1']
+						, 'address2' => $shop_address['address2']
+						, 'city' => $shop_address['city']
+						, 'state' => $shop_address['state']
+						, 'zip' => $shop_address['postcode']
+						, 'phone' => $shop_address['phone']
+					)
+					, array(
+						'first_name' => $user_address['address']['first_name']
+						, 'last_name' => $user_address['address']['last_name']
+						, 'address' => $user_address['address']['street']
+						, 'address2' => $user_address['address']['street_2']
+						, 'city' => $user_address['address']['city']
+						, 'state' => $user_address['state']['iso_code']
+						, 'zip' => $user_address['address']['zip']
+						, 'phone' => $user_address['address']['phone']
+						, 'country' => $country['name']
+					)
+					, $params['items']
+					, $params['total_product_weight'] // ounces
+					, $params['service_label_code']
+				);
+				
+				if (isset($USPSResponse['Error'])) {
+					_Model::$Exception_Helper->request_failed_exception($USPSResponse['Error']['Description']['VALUE']);
+				}
+				
+				$track_url = 'https://tools.usps.com/go/TrackConfirmAction_input?qtc_tLabels1=' . $USPSResponse['FirstClassMailIntlResponse']['BarcodeNumber']['VALUE'];
+				$tracking_number = $USPSResponse['FirstClassMailIntlResponse']['BarcodeNumber']['VALUE'];
+				$label = $USPSResponse['FirstClassMailIntlResponse']['LabelImage']['VALUE'];
+			
+			}
+			else {
+				_Model::$Exception_Helper->request_failed_exception('Invalid service label code: ' . $params['service_label_code']);
+			}
+		}
+		else {
+			if (in_array($params['service_label_code'], array('Priority', 'First Class', 'Standard Post', 'Media Mail', 'Library Mail'))) {
+				 
+				 $shipper_info = array(
+					'name' => $shop['name']
+					, 'address' => $shop_address['address1']
+					, 'address2' => $shop_address['address2']
+					, 'city' => $shop_address['city']
+					, 'state' => $shop_address['state']
+					, 'zip' => $shop_address['postcode']
+					, 'phone' => $shop_address['phone']
+				);
+				
+				$recipient_info = array(
+					'name' => $user_address['address']['first_name'] . ' ' . $user_address['address']['last_name']
+					, 'address' => $user_address['address']['street']
+					, 'address2' => $user_address['address']['street_2']
+					, 'city' => $user_address['address']['city']
+					, 'state' => $user_address['state']['iso_code']
+					, 'zip' => $user_address['address']['zip']
+					, 'phone' => $user_address['address']['phone']
+				);
+				 
+				 if ($is_return_label) {
+					 $temp_shipper_info = $shipper_info;
+					 $shipper_info = $recipient_info;
+					 $recipient_info = $temp_shipper_info;
+				 }
+				
+				 $USPSResponse = USPSLabel(
+					$shipping_configs['USPS API Username']
+					, $shipper_info
+					, $recipient_info
+					, $params['total_product_weight'] // ounces
+					, $params['service_label_code']
+				);
+				
+				if (isset($USPSResponse['Error'])) {
+					_Model::$Exception_Helper->request_failed_exception($USPSResponse['Error']['Description']['VALUE']);
+				}
+				
+				$track_url = 'https://tools.usps.com/go/TrackConfirmAction_input?qtc_tLabels1=' . $USPSResponse['DeliveryConfirmationV4.0Response']['DeliveryConfirmationNumber']['VALUE'];
+				$tracking_number = $USPSResponse['DeliveryConfirmationV4.0Response']['DeliveryConfirmationNumber']['VALUE'];
+				$label = $USPSResponse['DeliveryConfirmationV4.0Response']['DeliveryConfirmationLabel']['VALUE'];
+			
+			}
+			else if ($params['service_label_code'] == 'Express') {
+				$shipper_info = array(
+					'name' => $shop['name']
+					, 'address' => $shop_address['address1']
+					, 'address2' => $shop_address['address2']
+					, 'city' => $shop_address['city']
+					, 'state' => $shop_address['state']
+					, 'zip' => $shop_address['postcode']
+					, 'phone' => $shop_address['phone']
+				);
+				
+				$recipient_info = array(
+					'first_name' => $user_address['address']['first_name']
+					, 'last_name' => $user_address['address']['last_name']
+					, 'address' => $user_address['address']['street']
+					, 'address2' => $user_address['address']['street_2']
+					, 'city' => $user_address['address']['city']
+					, 'state' => $user_address['state']['iso_code']
+					, 'zip' => $user_address['address']['zip']
+					, 'phone' => $user_address['address']['phone']
+				);
+				
+				if ($is_return_label) {
+					 $temp_shipper_info = $shipper_info;
+					 $shipper_info = $recipient_info;
+					 $recipient_info = $temp_shipper_info;
+				 }
+				
+				$USPSResponse = USPSExpressLabel(
+					$shipping_configs['USPS API Username']
+					, $shipper_info
+					, $recipient_info
+					, $params['total_product_weight'] // ounces
+					, $params['service_label_code']
+				);
+				
+				if (isset($USPSResponse['Error'])) {
+					_Model::$Exception_Helper->request_failed_exception($USPSResponse['Error']['Description']['VALUE']);
+				}
+				
+				$track_url = 'https://tools.usps.com/go/TrackConfirmAction_input?qtc_tLabels1=' . $USPSResponse['ExpressMailLabelResponse']['EMConfirmationNumber']['VALUE'];
+				$tracking_number = $USPSResponse['ExpressMailLabelResponse']['EMConfirmationNumber']['VALUE'];
+				$label = $USPSResponse['ExpressMailLabelResponse']['EMLabel']['VALUE'];
+			}
+			else {
+				_Model::$Exception_Helper->request_failed_exception('Invalid service label code: ' . $params['service_label_code']);
+			}
+		}
+		
+		if (isset($params['update-tracking-info']) && $params['update-tracking-info'] === true) {
+			$this->Order_Shipment->save(
+				array(
+					'tracking_number' => $tracking_number
+					, 'url' => $track_url
+					, 'id_order_shipment' => $params['id_order_shipment']
+				)
+			);
+		}
+		
+		$data = array(
+			'tracking_number' => $tracking_number
+			, 'label' => $label
+			, 'tracking_url' => $track_url
+		);
+		
+		return static::wrap_result(true, $data);
+	}
+	
+	public function ups_shipping_label($params = array()) {
+		$this->load('Carrier');
+		$this->load('Configuration');
+		$this->load('Country');
+		$this->load('Shop');
+		$this->load('Config', ADMIN_API_HOST, ADMIN_API_USER, ADMIN_API_PASSWORD, ADMIN_API_DATABASE);
+		$this->load('Order_Shipment');
+
+		$data = array();
+
+		$validate_names = array(
+			'id_shop' => NULL
+			, 'shipping_address_id' => NULL
+			, 'total_product_weight' => NULL
+		);
+
+		$validate_params = array_merge($validate_names, $params);
+
+		// Validations
+		$input_validations = array(
+			'user_id' => array(
+				'label' => 'User ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+			, 'id_shop' => array(
+				'label' => 'Shop ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+			, 'id_lang' => array(
+				'label' => 'Lang ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+			, 'id_order_shipment' => array(
+				'label' => 'Order Shipment ID'
+				, 'rules' => array(
+					'is_int' => NULL
+				)
+			)
+			, 'total_product_weight' => array(
+				'label' => 'Total Product Weight'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_decimal' => '2'
+					, 'is_positive' => NULL
+				)
+			)
+			, 'shipping_address_id' => array(
+				'label' => 'Shipping Address ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+			, 'service_code' => array(
+				'label' => 'Service Code'
+				, 'rules' => array(
+					'is_set' => NULL
+				)
+			)
+			, 'service_name' => array(
+				'label' => 'Service Name'
+				, 'rules' => array(
+					'is_set' => NULL
+				)
+			)
+		);
+		$this->Validate->add_many($input_validations, $validate_params, true);
+		$this->Validate->run();
+		
+		$is_return_label = !empty($params['return-label']) && $params['return-label'] === true ? true : false;
+		
+		require DR . '/includes/php/classes/shipping/ups/label.php';
+		
+		// Shipping configs
+		$shipping_configs = $this->Config->get_configs_by_section('Shipping APIs');
+
+		// Get shop store address
+		$shop_address = $this->Shop->get_primary_shop_store_address($params['id_shop']);
+		if (empty($shop_address)) {
+			_Model::$Exception_Helper->request_failed_exception('Shop address not found.');
+		}
+		
+		$shop = $this->Shop->get_row(
+			array(
+				'id_shop' => $params['id_shop']
+			)
+		);
+
+		// Get user hq address info
+		$Address_Controller = new Address_Controller();
+		$user_address = $Address_Controller->get_hq_user_address_info(
+			array(
+				'user_id' => $params['user_id']
+				, 'address_id' => $params['shipping_address_id']
+			)
+		);
+		if (empty($user_address)) {
+			_Model::$Exception_Helper->request_failed_exception('Shipping address not found.');
+		}
+		
+		$country = $this->Country->get_country($user_address['country']['id_country'], $params['id_lang']);
+		if (empty($country)) {
+			_Model::$Exception_Helper->request_failed_exception('Country not found.');
+		}
+			
+		//echo '<pre>'; print_r(USPSLabel()); echo '</pre>';
+		// $shop_address['country']
+		// $username, $from, $to, $ounces
+		//, 'CountryCode' => $user_address['country']['iso_code']
+		
+		$shipper_info = array(
+			'name' => $shop['name']
+			, 'address' => $shop_address['address1']
+			, 'address2' => $shop_address['address2']
+			, 'city' => $shop_address['city']
+			, 'state' => $shop_address['state']
+			, 'zip' => $shop_address['postcode']
+			, 'phone' => $shop_address['phone']
+			, 'country' => $shop_address['country']
+		);
+		
+		$recipient_info = array(
+			'name' => $user_address['address']['first_name'] . ' ' . $user_address['address']['last_name']
+			, 'address' => $user_address['address']['street']
+			, 'address2' => $user_address['address']['street_2']
+			, 'city' => $user_address['address']['city']
+			, 'state' => $user_address['state']['iso_code']
+			, 'zip' => $user_address['address']['zip']
+			, 'phone' => $user_address['address']['phone']
+			, 'country' => $user_address['country']['iso_code']
+		);
+		
+		if ($is_return_label) { // not neccessary
+			//$temp_shipper_info = $shipper_info;
+			//$shipper_info = $recipient_info;
+			//$recipient_info = $temp_shipper_info;
+		}
+		
+		$UPSLabel = new UpsLable($shipping_configs['UPS API Access Key'], $shipping_configs['UPS API Username'], $shipping_configs['UPS API Password'], $shipping_configs['UPS API Account Number']
+		, $shipper_info
+		, $is_return_label
+		, false
+		);
+		
+		$result = $UPSLabel->shipConfirm(
+		$recipient_info
+		, $params['service_code']
+		, $params['service_name']
+		, ($params['total_product_weight'] / 16));
+		
+		if (!$result['success']) {
+			_Model::$Exception_Helper->request_failed_exception($result['error']);
+		}
+		
+		$result = $UPSLabel->shipAccept($result['data']['SHIPMENTCONFIRMRESPONSE']['SHIPMENTDIGEST']);
+		if (!$result['success']) {
+			_Model::$Exception_Helper->request_failed_exception($result['error']);
+		}
+		
+		$track_url = 'http://wwwapps.ups.com/WebTracking/track?track=yes&trackNums=' . $result['data']['SHIPMENTACCEPTRESPONSE']['SHIPMENTRESULTS']['PACKAGERESULTS']['TRACKINGNUMBER'];
+		if (isset($params['update-tracking-info']) && $params['update-tracking-info'] === true) {
+			$this->Order_Shipment->save(
+				array(
+					'tracking_number' => $result['data']['SHIPMENTACCEPTRESPONSE']['SHIPMENTRESULTS']['PACKAGERESULTS']['TRACKINGNUMBER']
+					, 'url' => $track_url
+					, 'id_order_shipment' => $params['id_order_shipment']
+				)
+			);
+		}
+		
+		$data = array(
+			'tracking_number' => $result['data']['SHIPMENTACCEPTRESPONSE']['SHIPMENTRESULTS']['PACKAGERESULTS']['TRACKINGNUMBER']
+			, 'label' => $result['data']['SHIPMENTACCEPTRESPONSE']['SHIPMENTRESULTS']['PACKAGERESULTS']['LABELIMAGE']['GRAPHICIMAGE']
+			, 'tracking_url' => $track_url
+		);
+		
+		return static::wrap_result(true, $data);
+	}
+	
+	public function fedex_shipping_label($params = array()) {
+		$this->load('Carrier');
+		$this->load('Configuration');
+		$this->load('Country');
+		$this->load('Shop');
+		$this->load('Config', ADMIN_API_HOST, ADMIN_API_USER, ADMIN_API_PASSWORD, ADMIN_API_DATABASE);
+		$this->load('Order_Shipment');
+
+		$data = array();
+
+		$validate_names = array(
+			'id_shop' => NULL
+			, 'shipping_address_id' => NULL
+			, 'total_product_weight' => NULL
+		);
+
+		$validate_params = array_merge($validate_names, $params);
+
+		// Validations
+		$input_validations = array(
+			'user_id' => array(
+				'label' => 'User ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+			, 'id_shop' => array(
+				'label' => 'Shop ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+			, 'id_lang' => array(
+				'label' => 'Lang ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+			, 'id_order_shipment' => array(
+				'label' => 'Order Shipment ID'
+				, 'rules' => array(
+					'is_int' => NULL
+				)
+			)
+			, 'total_product_weight' => array(
+				'label' => 'Total Product Weight'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_decimal' => '2'
+					, 'is_positive' => NULL
+				)
+			)
+			, 'shipping_address_id' => array(
+				'label' => 'Shipping Address ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+			, 'service_code' => array(
+				'label' => 'Service Code'
+				, 'rules' => array(
+					'is_set' => NULL
+				)
+			)
+			, 'service_name' => array(
+				'label' => 'Service Name'
+				, 'rules' => array(
+					'is_set' => NULL
+				)
+			)
+		);
+		$this->Validate->add_many($input_validations, $validate_params, true);
+		$this->Validate->run();
+		
+		$is_return_label = !empty($params['return-label']) && $params['return-label'] === true ? true : false;
+		
+		require DR . '/includes/php/classes/shipping/fedex/label.php';
+		
+		// Shipping configs
+		$shipping_configs = $this->Config->get_configs_by_section('Shipping APIs');
+
+		// Get shop store address
+		$shop_address = $this->Shop->get_primary_shop_store_address($params['id_shop']);
+		if (empty($shop_address)) {
+			_Model::$Exception_Helper->request_failed_exception('Shop address not found.');
+		}
+		
+		$shop = $this->Shop->get_row(
+			array(
+				'id_shop' => $params['id_shop']
+			)
+		);
+
+		// Get user hq address info
+		$Address_Controller = new Address_Controller();
+		$user_address = $Address_Controller->get_hq_user_address_info(
+			array(
+				'user_id' => $params['user_id']
+				, 'address_id' => $params['shipping_address_id']
+			)
+		);
+		if (empty($user_address)) {
+			_Model::$Exception_Helper->request_failed_exception('Shipping address not found.');
+		}
+		
+		$country = $this->Country->get_country($user_address['country']['id_country'], $params['id_lang']);
+		if (empty($country)) {
+			_Model::$Exception_Helper->request_failed_exception('Country not found.');
+		}
+			
+		$shippingStateField = ($user_address['country']['iso_code'] == 'US') ? 'state' : 'province';
+		$accountInfo = array('key' => $shipping_configs['FedEx API Authentication Key']
+							 , 'password' => $shipping_configs['FedEx API Password']
+							 , 'account' => $shipping_configs['FedEx API Account Number']
+							 , 'billingAccount' => $shipping_configs['FedEx API Account Number']
+							 , 'meter' => $shipping_configs['FedEx API Meter Number']
+							 );
+		$fedex = new FedexLabel($accountInfo, 'ship');
+		
+		$recipient = array('name' => $user_address['address']['first_name'] . ' ' . $user_address['address']['last_name']
+						   , 'company' => NULL
+						   , 'phone' => $user_address['address']['phone']
+						   , 'street' => $user_address['address']['street']
+						   , 'street2' => $user_address['address']['street_2']
+						   , 'city' => $user_address['address']['city']
+						   , 'stateOrProvince' => $user_address['state']['iso_code']
+						   , 'postalCode' => $user_address['address']['zip']
+						   , 'country' => $user_address['country']['iso_code']
+						   , 'residential' => '1'
+						   );
+		
+		
+		$shipper = array('name' => $shop['name']
+						 , 'company' => $shop['name']
+						 , 'phone' => $shop_address['phone']
+						 , 'street' => $shop_address['address1']
+						 , 'street2' => $shop_address['address2']
+						 , 'city' => $shop_address['city']
+						 , 'stateOrProvince' => $shop_address['state']
+						 , 'postalCode' => $shop_address['postcode']
+						 , 'country' => $shop_address['country']
+						 , 'residential' => '0'
+						 );
+		
+		if ($is_return_label) {
+			$temp_recipient = $recipient;
+			$recipient = $shipper;
+			$shipper = $temp_recipient;
+		}
+			 
+		$fedex->setRecipient($recipient);
+		$fedex->setShipper($shipper);
+		
+		$package = array('weight' => ($params['total_product_weight'] / 16)
+						// , 'length' => $package['length']
+						// , 'width' => $package['width']
+						// , 'height' => $package['height']
+						 );
+		$fedex->setPackage($package);
+		
+		$fedex->setServiceType($params['service_code']);
+		
+		if ($user_address['country']['iso_code'] != 'US') { // set custom clearance details for international shipments
+			$fedex->setCustomsValue($params['items']);
+		}
+		
+		$fedex->processShipment();
+		
+		if (!$fedex->error) { // everything went smoothly
+			$track_url = 'http://www.fedex.com/fedextrack/?tracknumbers=' . $fedex->trackingNumber;
+			if (isset($params['update-tracking-info']) && $params['update-tracking-info'] === true) {
+				$this->Order_Shipment->save(
+					array(
+						'tracking_number' => $fedex->trackingNumber
+						, 'url' => $track_url
+						, 'id_order_shipment' => $params['id_order_shipment']
+					)
+				);
+			}
+		
+			$data = array(
+				'tracking_number' => $fedex->trackingNumber
+				, 'label' => $fedex->response->CompletedShipmentDetail->CompletedPackageDetails->Label->Parts->Image
+				, 'tracking_url' => $track_url
+			);
+			
+			return static::wrap_result(true, $data);
+		}
+		else { 
+			$errors = array();
+			if (!empty($fedex->notifications)){ // notify user of errors
+				foreach ($fedex->notifications as $notification) {
+					if ($notification['Severity'] != 'ERROR') {
+						continue;
+					}
+					array_push($errors, 'FedEx Shipping API Error: ' . $notification['Message']);
+				}
+			}
+		}
+		
+		return static::wrap_result(false, NULL, _Model::$Status_Code->get_status_code_request_failed(), $errors);
+	}
+	
 }
 
 ?>

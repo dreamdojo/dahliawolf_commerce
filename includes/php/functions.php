@@ -216,15 +216,25 @@ function email($from, $fromEmail, $to, $toEmail, $subject, $htmlBody, $plainBody
 		// Set Attachments
 		if (!empty($attachments)) {
 			foreach ($attachments as $attachment) {
-				if (!is_file($attachment['path'])) {
-					continue;
-				}
-				
-				if (isset($attachment['type']) && $attachment['type'] != '') {
-					$mail->AddAttachment($attachment['path'], $attachment['filename'], 'base64', $attachment['type']);
+				if (isset($attachment['is_string']) && $attachment['is_string'] === true) {
+					if (isset($attachment['type']) && $attachment['type'] != '') {
+						$mail->AddStringAttachment($attachment['string'], $attachment['filename'], 'base64', $attachment['type']);
+					}
+					else {
+						$mail->AddStringAttachment($attachment['string'], $attachment['filename']);
+					}
 				}
 				else {
-					$mail->AddAttachment($attachment['path'], $attachment['filename']);
+					if (!is_file($attachment['path'])) {
+						continue;
+					}
+					
+					if (isset($attachment['type']) && $attachment['type'] != '') {
+						$mail->AddAttachment($attachment['path'], $attachment['filename'], 'base64', $attachment['type']);
+					}
+					else {
+						$mail->AddAttachment($attachment['path'], $attachment['filename']);
+					}
 				}
 			}
 		}

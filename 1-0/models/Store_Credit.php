@@ -6,6 +6,7 @@ class Store_Credit extends _Model {
 	protected $fields = array(
 		'user_id'
 		, 'id_order'
+		, 'id_order_detail_return'
 		, 'amount'
 		, 'note'
 	);

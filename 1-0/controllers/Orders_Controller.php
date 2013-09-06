@@ -439,10 +439,10 @@ class Orders_Controller extends _Controller {
 			foreach ($cart['products'] as $order_product) {
 				$product_price = ($order_product['product_info']['on_sale'] == '1') ? $order_product['product_info']['sale_price'] : $order_product['product_info']['price'];
 
-				$unit_tax = !empty($order_product['tax_info']) && is_numeric($order_product['tax_info']) ? $order_product['tax_info']['unit_amount'] : 0;
+				$unit_tax = !empty($order_product['tax_info']) && is_numeric($order_product['tax_info']['unit_amount']) ? $order_product['tax_info']['unit_amount'] : 0;
 				$unit_price_tax_excl = $product_price;
 				$unit_price_tax_incl = $unit_price_tax_excl + $unit_tax;
-				$total_product_tax = !empty($order_product['tax_info']) && is_numeric($order_product['tax_info']) ? $order_product['tax_info']['total_amount'] : 0;
+				$total_product_tax = !empty($order_product['tax_info']) && is_numeric($order_product['tax_info']['total_amount']) ? $order_product['tax_info']['total_amount'] : 0;
 				$total_price_tax_excl = ($product_price * $order_product['quantity']);
 				$total_price_tax_incl = $total_price_tax_excl + $total_product_tax;
 				$order_detail_data = array(
@@ -453,7 +453,7 @@ class Orders_Controller extends _Controller {
 					, 'product_attribute_id' => $order_product['id_product_attribute']
 					, 'product_name' => $order_product['product_info']['product_name']
 					, 'product_quantity' => $order_product['quantity']
-					, 'product_price' => ($order_product['product_info']['on_sale'] == '1') ? $order_product['product_info']['sale_price'] : $order_product['product_info']['price']
+					, 'product_price' => $product_price
 					, 'product_ean13' => $order_product['product_info']['ean13']
 					, 'product_upc' => $order_product['product_info']['upc']
 					, 'product_reference' => $order_product['product_info']['reference']
@@ -465,9 +465,10 @@ class Orders_Controller extends _Controller {
 					, 'total_price_tax_excl' => $total_price_tax_excl
 					, 'unit_price_tax_incl' => $unit_price_tax_incl
 					, 'unit_price_tax_excl' => $unit_price_tax_excl
+					, 'unit_tax' => $unit_tax
 					, 'total_shipping_price_tax_incl' => 0
 					, 'total_shipping_price_tax_excl' => 0
-					, 'original_product_price' => ($order_product['product_info']['on_sale'] == '1') ? $order_product['product_info']['sale_price'] : $order_product['product_info']['price']
+					, 'original_product_price' => $order_product['product_info']['price']
 				);
 
 				$id_order_detail = $this->Order_Detail->save($order_detail_data);
@@ -480,6 +481,20 @@ class Orders_Controller extends _Controller {
 				);
 
 				$this->Order_Detail_Tax->save($order_detail_tax_data);
+
+				// Credit commissions
+				// For each product, credit product.user_id with product.commission * quantity
+				if (!empty($order_product['product_info']['user_id'])) {
+					$commission_data = array(
+						'user_id' => $order_product['product_info']['user_id']
+						, 'id_order' => $data['id_order']
+						, 'id_product' => $order_product['product_info']['id_product']
+						, 'id_order_detail' => $id_order_detail
+						, 'product_quantity' => $order_product['quantity']
+						, 'commission' => $order_product['product_info']['commission'] * $order_product['quantity']
+					);
+					$this->Commission->save($commission_data);
+				}
 			}
 		}
 
@@ -599,20 +614,6 @@ class Orders_Controller extends _Controller {
 			, 'id_order' => $data['id_order']
 		);
 		$this->Dw_User_Point->save($user_point_data);
-
-		// Credit commissions
-		// For each product, credit product.user_id with product.commission * quantity
-		foreach ($cart['products'] as $i => $product) {
-			if (!empty($product['product_info']['user_id'])) {
-				$commission_data = array(
-					'user_id' => $product['product_info']['user_id']
-					, 'id_order' => $data['id_order']
-					, 'id_product' => $product['product_info']['id_product']
-					, 'commission' => $product['product_info']['commission'] * $product['quantity']
-				);
-				$this->Commission->save($commission_data);
-			}
-		}
 
 		// Deduct redeemed commissions
 		if (!empty($cart['cart_commission']) && !empty($cart['cart_commission']['amount'])) {
@@ -852,6 +853,11 @@ class Orders_Controller extends _Controller {
 
 		// Get products
 		$order['products'] = $this->Product->get_order_products($params['id_order'], $params['id_shop'], $params['id_lang']);
+		if (!empty($order['products'])) {
+			foreach ($order['products'] as $i => $product) {
+				$order['products'][$i]['combinations'] = $this->Product->get_product_combinations($product['product_id'], $order['id_shop'], $order['id_lang']);
+			}
+		}
 
 		// Get billing & shipping addresses
 		$order['addresses'] = array();
@@ -1441,6 +1447,33 @@ class Orders_Controller extends _Controller {
 		}
 	}
 
+	private function reverse_order_detail_commissions($id_order_detail, $product_quantity, $note = '') {
+		$this->load('Commission');
+
+		$commission = $this->Commission->get_row(
+			array(
+				'id_order_detail' => $id_order_detail
+			)
+		);
+
+		if (!empty($commission)) {
+			// Calculate commission from quantity
+			$quantity_commission = ($commission['commission'] / $commission['product_quantity']) * $product_quantity;
+
+			$commission_data = array(
+				'user_id' => $commission['user_id']
+				, 'id_order' => $commission['id_order']
+				, 'id_product' => $commission['id_product']
+				, 'id_order_detail' => $commission['id_order_detail']
+				, 'commission' => -1 * $quantity_commission
+				, 'product_quantity' => $product_quantity
+				, 'note' => $note
+			);
+			$this->Commission->save($commission_data);
+		}
+	}
+
+	// Admins will do this manually
 	private function restore_quantity($id_order) {
 		$this->load('Order_Detail');
 		// Get order products
@@ -1589,6 +1622,696 @@ class Orders_Controller extends _Controller {
 		}
 
 		return static::wrap_result(true, NULL, _Model::$Status_Code->get_status_code_no_content());
+	}
+
+	public function get_return_types($params = array()) {
+		$this->load('Order_Detail_Return');
+
+		$return_types = $this->Order_Detail_Return->get_enum_values('type');
+
+		return static::wrap_result(true, $return_types);
+	}
+
+	public function order_return($params = array()) {
+		$this->load('Orders');
+		$this->load('Order_Detail_Return');
+		$this->load('Product');
+		$this->load('Customer');
+		$this->load('User', ADMIN_API_HOST, ADMIN_API_USER, ADMIN_API_PASSWORD, ADMIN_API_DATABASE);
+
+		// Valid return types
+		$return_types = $this->Order_Detail_Return->get_enum_values('type');
+
+		// Filter out empty quantities
+		if (!empty($params['quantities_map'])) {
+			$params['quantities_map'] = array_filter($params['quantities_map']);
+		}
+
+		// Validations
+		$input_validations = array(
+			'id_order' => array(
+				'label' => 'Order ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+			, 'type' => array(
+				'label' => 'Return Type'
+				, 'rules' => array(
+					'is_in' => $return_types
+				)
+			)
+			, 'quantities_map' => array(
+				'label' => 'Quantities Map'
+				, 'rules' => array(
+					'is_set' => NULL
+				)
+			)
+			, 'product_attribute_id_map' => array(
+				'label' => 'Exchange Size Map'
+				, 'rules' => array(
+					'is_set' => NULL
+				)
+			)
+		);
+		$this->Validate->add_many($input_validations, $params, true);
+		$this->Validate->run();
+
+		// Get order details to make sure pass in IDs are valid for the order
+		$order_details = $this->Orders->get_order_details($params['id_order']);
+		if (empty($order_details)) {
+			_Model::$Exception_Helper->request_failed_exception('Order not found 1.');
+		}
+
+		$order = $this->Orders->get_row(
+			array(
+				'id_order' => $order_details[0]['id_order']
+			)
+		);
+
+		if (empty($order)) {
+			_Model::$Exception_Helper->request_failed_exception('Order not found 2.');
+		}
+
+		$id_order_detail_map = rows_to_groups($order_details, 'id_order_detail');
+		$order_products = $this->Product->get_order_products($order['id_order'], $order['id_shop'], $order['id_lang']);
+		$order_products = !empty($order_products) ? rows_to_groups($order_products, 'id_order_detail') : array();
+		$products_returning = array();
+		$product_subtotal = 0;
+		$product_taxes = 0;
+		$return_grand_total = 0;
+
+		// Insert rows
+		foreach ($params['quantities_map'] as $id_order_detail => $quantity) {
+			if (!is_numeric($quantity) || $quantity <= 0) {
+				_Model::$Exception_Helper->bad_request_exception('Requested return quantity must be a positive non zero number.');
+			}
+
+			// If valid product in the order
+			if (!empty($id_order_detail_map[$id_order_detail])) {
+				$available_quantity =
+					$id_order_detail_map[$id_order_detail][0]['product_quantity']
+					- max(
+						(
+						$id_order_detail_map[$id_order_detail][0]['return_product_quantity']
+						- $id_order_detail_map[$id_order_detail][0]['rejected_return_quantity']
+						)
+						, 0
+					);
+				// and requested return quantity does not exceed available quantity (quantity - return quantity)
+				if ($quantity <= $available_quantity) {
+
+					$combinations = $this->Product->get_product_combinations($order_products[$id_order_detail][0]['product_id'], $order['id_shop'], $order['id_lang']);
+
+					$combinations = !empty($combinations) ? rows_to_groups($combinations, 'id_product_attribute') : array();
+					$product_attribute_id = NULL;
+					$exchange_attribute = '';
+
+					if ($params['type'] == 'Exchange') {
+						if (
+							empty($params['product_attribute_id_map'][$id_order_detail])
+							|| empty($combinations[$params['product_attribute_id_map'][$id_order_detail]]))
+							{
+								_Model::$Exception_Helper->bad_request_exception('Invalid exchange size.');
+						}
+
+						$product_attribute_id = $params['product_attribute_id_map'][$id_order_detail];
+						$exchange_attribute = $combinations[$params['product_attribute_id_map'][$id_order_detail]][0]['attribute_names'];
+
+					}
+
+					$order_detail_return_data = array(
+						'id_order_detail' => $id_order_detail
+						, 'product_quantity' => $quantity
+						, 'type' => $params['type']
+						, 'exchange_product_attribute_id' => $product_attribute_id
+					);
+					$this->Order_Detail_Return->save($order_detail_return_data);
+
+					$return_amount = ($order_products[$id_order_detail][0]['unit_price_tax_incl'] * $quantity);
+
+					array_push(
+						$products_returning
+						, array(
+							'product_name' => $order_products[$id_order_detail][0]['product_name']
+							, 'attributes' => $order_products[$id_order_detail][0]['attributes']
+							, 'exchange_attribute' => $exchange_attribute
+							, 'return_quantity' => $quantity
+							, 'return_type' => $params['type']
+							, 'status' => 'Pending'
+							, 'product_price' => $order_products[$id_order_detail][0]['product_price']
+							, 'return_amount' => $return_amount
+						)
+					);
+
+					$product_subtotal += ($order_products[$id_order_detail][0]['product_price'] * $quantity);
+					$product_taxes += ($order_products[$id_order_detail][0]['unit_tax'] * $quantity);
+					$return_grand_total += $return_amount;
+
+				}
+				else {
+					_Model::$Exception_Helper->bad_request_exception('Requested return quantity exceeds available return quantity.');
+				}
+			}
+			else {
+				_Model::$Exception_Helper->bad_request_exception('Product not found in order.');
+			}
+		}
+
+		if (!empty($products_returning)) {
+			// Get Customer
+			$customer = $this->Customer->get_row(
+				array(
+					'id_customer' => $order['id_customer']
+				)
+			);
+
+			if (empty($customer)) {
+				_Model::$Exception_Helper->request_failed_exception('Customer not found.');
+			}
+
+			// Get User
+			$user = $this->User->get_row(
+				array(
+					'user_id' => $customer['user_id']
+				)
+			);
+
+			if (empty($user)) {
+				_Model::$Exception_Helper->request_failed_exception('User not found.');
+			}
+
+			// Send email to user
+			$this->load('Config', ADMIN_API_HOST, ADMIN_API_USER, ADMIN_API_PASSWORD, ADMIN_API_DATABASE);
+			$email_domain = 'dahliawolf.com';
+			$order_email_prefix = $this->Config->get_value('Orders From Email Prefix');
+			$from_email = $order_email_prefix . '@' . $email_domain;
+
+			$subject = 'Return Request Confirmation';
+			$custom_variables = array(
+				'email' => $user['email']
+				, 'site_name' => $email_domain
+				, 'domain' => $email_domain
+				, 'products' => $products_returning
+				, 'product_subtotal' => $product_subtotal
+				, 'product_taxes' => $product_taxes
+				, 'return_grand_total' => $return_grand_total
+			);
+
+			$template_variables = array(
+				'first_name' => $user['first_name']
+				, 'email' => $user['email']
+				, 'domain' => $email_domain
+				, 'site_name' => $email_domain
+				, 'cdn_domain' => ''
+			);
+
+			$attachments = array();
+
+			$Email_Template_Helper = new Email_Template_Helper();
+
+			$email_name = 'return-request-confirmation';
+
+			if ($params['type'] == 'Exchange') {
+				$subject = 'Exchange Request Confirmation';
+				$email_name = 'exchange-request-confirmation';
+			}
+			
+			$email_results = $Email_Template_Helper->sendEmail($email_name, $custom_variables, $template_variables, $email_domain, $from_email, $user['first_name'] . ' ' . $user['last_name'], $user['email'], $subject, $from_email, '', '', $attachments);
+
+			if (!$email_results['sent']) {
+				_Model::$Exception_Helper->request_failed_exception('Email not sent: ' . $email_results['error']);
+			}
+			
+			$shipping_email = 'shipping@dahliawolf.com';
+			$subject .= ' for ' . $user['first_name'] . ' ' . $user['last_name'];
+			$custom_variables['email'] = $shipping_email;
+			$template_variables['email'] = $shipping_email;
+			$email_results = $Email_Template_Helper->sendEmail($email_name, $custom_variables, $template_variables, $email_domain, $from_email, $shipping_email, $shipping_email, $subject, $from_email, '', '', $attachments);
+
+		}
+
+		return static::wrap_result(true, NULL);
+	}
+
+	// Make sure it's pending and belongs to user
+	public function cancel_order_return($params = array()) {
+		$this->load('Order_Detail_Return');
+
+		$data = array();
+
+		// Validations
+		$input_validations = array(
+			'id_order_detail_return' => array(
+				'label' => 'Order Detail Return ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+			, 'user_id' => array(
+				'label' => 'User ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+		);
+		$this->Validate->add_many($input_validations, $params, true);
+		$this->Validate->run();
+
+		$return = $this->Order_Detail_Return->get_return($params['id_order_detail_return']);
+
+		if (empty($return) || $return['user_id'] != $params['user_id']) {
+			_Model::$Exception_Helper->request_failed_exception('Return not found.');
+		}
+		else if ($return['status'] != 'Pending') {
+			_Model::$Exception_Helper->request_failed_exception('Return has already been processed.');
+		}
+
+		$this->Order_Detail_Return->delete_by_primary_key($params['id_order_detail_return']);
+
+		return static::wrap_result(true, NULL, _Model::$Status_Code->get_status_code_no_content());
+	}
+
+	public function get_user_order_detail_returns($params = array()) {
+		$this->load('Order_Detail_Return');
+
+		// Validations
+		$input_validations = array(
+			'user_id' => array(
+				'label' => 'User Id'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+			, 'id_shop' => array(
+				'label' => 'Shop Id'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+			, 'id_lang' => array(
+				'label' => 'Language Id'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+			, 'id_order' => array(
+				'label' => 'Order Id'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+		);
+		$this->Validate->add_many($input_validations, $params, true);
+		$this->Validate->run();
+
+		$returns = $this->Order_Detail_Return->get_returns_by_order($params['id_order'], $params['user_id'], $params['id_shop'], $params['id_lang']);
+
+		return static::wrap_result(true, $returns);
+	}
+
+	public function accept_return($params = array()) {
+		$this->load('Order_Detail_Return');
+		$this->load('Store_Credit');
+		$this->load('Orders');
+		$this->load('Order_Invoice');
+		$this->load('Order_Payment');
+		$this->load('Payment_Method', ADMIN_API_HOST, ADMIN_API_USER, ADMIN_API_PASSWORD, ADMIN_API_DATABASE);
+		$this->load('Order_Detail_Return_Payment');
+		$this->load('Order_Detail_Exchange');
+
+		$data = array();
+
+		// Validations
+		$input_validations = array(
+			'id_order_detail_return' => array(
+				'label' => 'Order Detail Return ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+		);
+		$this->Validate->add_many($input_validations, $params, true);
+		$this->Validate->run();
+
+		$return = $this->Order_Detail_Return->get_return($params['id_order_detail_return']);
+
+		if (empty($return)) {
+			_Model::$Exception_Helper->request_failed_exception('Return not found.');
+		}
+
+		if ($return['status'] == 'Accepted') {
+			_Model::$Exception_Helper->request_failed_exception('Return has already been accepted.');
+		}
+		else if ($return['return_amount'] <= 0) {
+			_Model::$Exception_Helper->request_failed_exception('Invalid return amount: ' . $return['return_amount']);
+		}
+
+		$now = _Model::$date_time;
+
+		// Row in store_credit
+		if ($return['type'] == 'Store Credit') {
+			$data['id_store_credit'] = $this->Store_Credit->save(
+				array(
+					'user_id' => $return['user_id']
+					, 'id_order_detail_return' => $return['id_order_detail_return']
+					, 'amount' => $return['return_amount']
+				)
+			);
+		}
+		// Exchange
+		else if ($return['type'] == 'Exchange') {
+			$data['id_order_detail_exchange'] = $this->Order_Detail_Exchange->save(
+				array(
+					'id_order_detail' => $return['id_order_detail']
+					, 'id_order_detail_return' => $return['id_order_detail_return']
+					, 'exchange_product_attribute_id' => $return['exchange_product_attribute_id']
+				)
+			);
+		}
+		// Refund: Issue refund via cc/paypal
+		else if ($return['type'] == 'Refund') {
+
+			$cc_payment = false;
+			$paypal_payment = false;
+
+			$order = $this->Orders->get_row(
+				array('id_order' => $return['id_order'])
+			);
+
+			if (empty($order)) {
+				_Model::$Exception_Helper->request_failed_exception('Order could not be found.');
+			}
+
+			$order_invoice = $this->Order_Invoice->get_row(
+				array('id_order' => $order['id_order'])
+			);
+
+			$order_payment = $this->Order_Payment->get_row(
+				array('id_order' => $order['id_order'])
+			);
+
+			if (empty($order_payment)) {
+				_Model::$Exception_Helper->request_failed_exception('Order Payment could not be found.');
+			}
+			else if ($order_payment['transaction_id'] == '') {
+				_Model::$Exception_Helper->request_failed_exception('Transaction ID is not set.');
+			}
+			else if ($order_payment['amount'] == '') {
+				_Model::$Exception_Helper->request_failed_exception('Amount is not set.');
+			}
+
+			if (empty($order_payment['payment_method_id'])) {
+				_Model::$Exception_Helper->request_failed_exception('Payment method is not set.');
+			}
+
+			// Payment method
+			$pm = $this->Payment_Method->get_row(
+				array(
+					'payment_method_id' => $order_payment['payment_method_id']
+				)
+			);
+
+			if (empty($pm)) {
+				_Model::$Exception_Helper->request_failed_exception('Payment method not found.');
+			}
+
+			if ($pm['name'] == 'Credit Card') {
+				$cc_payment = true;
+			}
+			else if ($pm['name'] == 'PayPal') {
+				$paypal_payment = true;
+			}
+
+			$success = false;
+			$transaction_id = NULL;
+
+			if ($cc_payment) {
+				$calls = array(
+					'credit_credit_card' => array(
+						'transaction_id' => $order_payment['transaction_id']
+						, 'amount' => number_format($return['return_amount'], 2, '.', '')
+						, 'card_number' => $order_payment['card_number']
+					)
+				);
+
+				$API = new API(API_KEY_DEVELOPER, PRIVATE_KEY_DEVELOPER);
+				$cc_result = $API->rest_api_request('payment', $calls);
+				$cc_result_decoded = json_decode($cc_result, true);
+
+				if ($cc_result_decoded == '') {
+					_Model::$Exception_Helper->request_failed_exception($cc_result);
+				}
+				$api_errors = api_errors_to_array($cc_result_decoded);
+
+				if (!empty($api_errors)) {
+					return static::wrap_result(false, NULL, _Model::$Status_Code->get_status_code_request_failed(), $api_errors);
+				}
+
+				if ($cc_result_decoded['data']['credit_credit_card']['data']['transaction_id'] != '' && $cc_result_decoded['data']['credit_credit_card']['data']['transaction_id'] != '0') {
+					$transaction_id = $cc_result_decoded['data']['credit_credit_card']['data']['transaction_id'];
+				}
+				else { // failed (already returned)
+					_Model::$Exception_Helper->request_failed_exception($cc_result_decoded['data']['credit_credit_card']['data']['response_reason_text']);
+				}
+
+			}
+			else if ($paypal_payment) { // Process Paypal
+				$calls = array(
+					'return_partial_paypal_payment' => array(
+						'transaction_id' => $order_payment['transaction_id']
+						, 'amount' => number_format($return['return_amount'], 2, '.', '')
+					)
+				);
+
+				$API = new API(API_KEY_DEVELOPER, PRIVATE_KEY_DEVELOPER);
+				$result = $API->rest_api_request('payment', $calls);
+				$result_decoded = json_decode($result, true);
+
+				$api_errors = api_errors_to_array($result_decoded);
+
+				if (!empty($api_errors)) {
+					return static::wrap_result(false, NULL, _Model::$Status_Code->get_status_code_request_failed(), $api_errors);
+				}
+
+				$transaction_id = $result_decoded['data']['return_partial_paypal_payment']['data']['REFUNDTRANSACTIONID'];
+
+			}
+
+			$this->Order_Detail_Return_Payment->save(
+				array(
+					'id_order_detail_return' => $return['id_order_detail_return']
+					, 'payment_method_id' => $order_payment['payment_method_id']
+					, 'amount' => $return['return_amount']
+					, 'transaction_id' => $transaction_id
+				)
+			);
+		}
+
+		if ($return['type'] == 'Store Credit' || $return['type'] == 'Refund') {
+			// Reverse user points and
+			//$this->reverse_points($return['id_order']);
+			$this->reverse_order_detail_commissions($return['id_order_detail'], $return['product_quantity'], $note = 'Return Order');
+
+			// Restore quantity
+			//$this->restore_quantity($return['id_order']);
+		}
+
+		$data['id_order_detail_return'] = $this->Order_Detail_Return->save(
+			array(
+				'id_order_detail_return' => $return['id_order_detail_return']
+				, 'status' => 'Accepted'
+				, 'date_accepted' => $now
+			)
+		);
+
+		return static::wrap_result(true, $data);
+	}
+
+	public function reject_return($params = array()) {
+		$this->load('Order_Detail_Return');
+
+		$data = array();
+
+		// Validations
+		$input_validations = array(
+			'id_order_detail_return' => array(
+				'label' => 'Order Detail Return ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+		);
+
+		$this->Validate->add_many($input_validations, $params, true);
+		$this->Validate->run();
+
+		$return = $this->Order_Detail_Return->get_row(
+			array(
+				'id_order_detail_return' => $params['id_order_detail_return']
+			)
+		);
+
+		if (empty($return)) {
+			_Model::$Exception_Helper->request_failed_exception('Return not found.');
+		}
+
+		if ($return['status'] == 'Rejected') {
+			_Model::$Exception_Helper->request_failed_exception('Return has already been rejected.');
+		}
+
+		$now = _Model::$date_time;
+
+		$data['id_order_detail_return'] = $this->Order_Detail_Return->save(
+			array(
+				'id_order_detail_return' => $return['id_order_detail_return']
+				, 'status' => 'Rejected'
+				, 'date_rejected' => $now
+			)
+		);
+
+		return static::wrap_result(true, $data);
+
+	}
+
+	public function generate_return_shipping_label($params = array()) {
+		$this->load('Orders');
+		$this->load('Order_Detail_Return');
+		$this->load('Customer');
+
+		// Validations
+		$input_validations = array(
+			'id_order' => array(
+				'label' => 'Order ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+			, 'user_id' => array(
+				'label' => 'User ID'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+		);
+		$this->Validate->add_many($input_validations, $params, true);
+		$this->Validate->run();
+
+		$customer = $this->Customer->get_row(
+			array(
+				'user_id' => $params['user_id']
+			)
+		);
+
+		if (empty($customer)) {
+			_Model::$Exception_Helper->request_failed_exception('Customer not found.');
+		}
+
+		$shipping_method = $this->Orders->get_user_order_shipping_method($params['id_order'], $params['user_id']);
+		
+		if (empty($shipping_method)) {
+			_Model::$Exception_Helper->request_failed_exception('Shipping method not found.');
+		}
+		
+		if (!isset($params['generate-new-label']) || $params['generate-new-label'] === false) { // just need label content type
+			$order_shipment = $shipping_method;
+			
+			$content_type = '';
+			if ($order_shipment['carrier'] == 'UPS') {
+				$content_type = 'image/gif';
+			}
+			else if ($order_shipment['carrier'] == 'FedEx' || $order_shipment['carrier'] == 'USPS') {
+				$content_type = 'application/pdf';
+			}
+
+			$data = array(
+				'content-type' => $content_type
+			);
+
+			return static::wrap_result(true, $data);
+		}
+
+		$order_shipment = $this->Orders->get_return_shipment_info($params['id_order'], $params['user_id']);
+		if (empty($order_shipment)) {
+			_Model::$Exception_Helper->request_failed_exception('No pending returns to ship.');
+		}
+
+		$items = $this->Order_Detail_Return->get_pending_returns_by_order_for_shipment_label($order_shipment['id_order'], $order_shipment['user_id'], $order_shipment['id_shop'], $order_shipment['id_lang']);
+
+		if (empty($items)) {
+			_Model::$Exception_Helper->request_failed_exception('No pending returns to ship.');
+		}
+
+		if (
+			$order_shipment['carrier'] != 'USPS'
+			&& $order_shipment['carrier'] != 'UPS'
+			&& $order_shipment['carrier'] != 'FedEx'
+			) {
+			_Model::$Exception_Helper->request_failed_exception('Can not print shipping label for carrier: ' . $order_shipment['carrier']);
+		}
+		else if ($order_shipment['service_code'] == '') {
+			_Model::$Exception_Helper->request_failed_exception('Can not print shipping label for method: ' . $order_shipment['service_name']);
+		}
+
+		$carrier_params = array(
+			'user_id' => $order_shipment['user_id']
+			, 'id_lang' => $order_shipment['id_lang']
+			, 'id_shop' => $order_shipment['id_shop']
+			//, 'id_order_shipment' => $order_shipment['id_order_shipment']
+			, 'shipping_address_id' => $order_shipment['id_address_delivery']
+			, 'total_product_weight' => number_format($order_shipment['total_weight'], 2, '.', '')
+			, 'service_code' => $order_shipment['service_code']
+			, 'service_label_code' => $order_shipment['service_label_code']
+			, 'service_name' => $order_shipment['service_name']
+			, 'update-tracking-info' => false
+			, 'is_intl' => ($order_shipment['is_intl'] == '1') ? true : false
+			, 'items' => $items
+			, 'return-label' => true
+		);
+
+		$carrier_controller = new Carrier_Controller();
+
+		if ($order_shipment['carrier'] == 'UPS') {
+			$result = $carrier_controller->ups_shipping_label($carrier_params);
+		}
+		else if ($order_shipment['carrier'] == 'USPS') {
+			$result = $carrier_controller->usps_shipping_label($carrier_params);
+		}
+		else if ($order_shipment['carrier'] == 'FedEx') {
+			$result = $carrier_controller->fedex_shipping_label($carrier_params);
+		}
+
+		$result_data = $result['data'];
+
+		$content_type = '';
+		if ($order_shipment['carrier'] == 'UPS') {
+			$content_type = 'image/gif';
+		}
+		else if ($order_shipment['carrier'] == 'FedEx' || $order_shipment['carrier'] == 'USPS') {
+			$content_type = 'application/pdf';
+		}
+
+		$data = array_merge(
+			$result_data
+			, array(
+				'base64_encoded' => ($order_shipment['carrier'] == 'UPS' || $order_shipment['carrier'] == 'USPS') ? true : false
+				, 'content-type' => $content_type
+			)
+		);
+
+		return static::wrap_result(true, $data);
+
 	}
 }
 
