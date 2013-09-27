@@ -152,6 +152,7 @@ class Product extends _Model {
             $extra_join = "LEFT JOIN offline_commerce_v1_2013.favorite_product AS wishlist_id ON wishlist_id.id_product = product.id_product AND  wishlist_id.id_customer = :viewer_user_id";
         }
 
+
 		$sql = "
 		SELECT  DISTINCT  product.*,
 		        product_lang.name AS product_lang_name,
@@ -167,6 +168,7 @@ class Product extends _Model {
 		        (SELECT product_file.product_file_id FROM offline_commerce_v1_2013.product_file WHERE product_file.product_id = product.id_product ORDER BY product_file.product_file_id ASC LIMIT 1) AS product_file_id,
 		        IF(EXISTS(SELECT category_product.id_category_product FROM offline_commerce_v1_2013.category_product WHERE category_product.id_category = 1 AND category_product.id_product = product.id_product), 1, 0) AS is_new,
 		        user_username.username as username, IF(user_username.location IS NULL, '', user_username.location) AS 'location',
+		        IFNULL(user_username.avatar, 'avatar.php?user_id=') as 'avatar',
 			    mm.posting_ids,
 			    IF(like_winner.like_winner_id IS NOT NULL, 1, 0) AS is_winner,
 			    wishlist.wishlist_count,
@@ -209,7 +211,7 @@ class Product extends _Model {
 				GROUP BY sub_wishlist.id_product
 			) AS wishlist ON wishlist.id_product = product.id_product
 
-        WHERE shop.id_shop = :id_shop AND lang.id_lang = :id_lang AND product_shop.active = :active ";
+        WHERE shop.id_shop = :id_shop AND lang.id_lang = :id_lang AND product.active = :active ";
 
 
 		//product.status != :not_status AND
@@ -272,6 +274,10 @@ class Product extends _Model {
 							}
 						}
 					}
+
+                    $product_id = $data[$i]['id_product'];
+                    $product_files = $this->get_product_files($product_id, $id_shop, $id_lang );
+                    $data[$i]['product_images'] = $product_files;
 
 					if (!empty($posts)) {
 						$data[$i]['posts'] = $posts;
@@ -552,9 +558,9 @@ class Product extends _Model {
 		";
 
 		$params = array(
-			':id_product' => $id_product
-			, ':id_shop' => $id_shop
-			, ':id_lang' => $id_lang
+			':id_product' => $id_product,
+			':id_shop' => $id_shop,
+			':id_lang' => $id_lang,
 		);
 
 		try {
