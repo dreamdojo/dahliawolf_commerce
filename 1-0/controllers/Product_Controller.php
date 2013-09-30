@@ -216,8 +216,8 @@ class Product_Controller extends _Controller {
 			'product_id' => array(
 				'label' => 'Product ID'
 				, 'rules' => array(
-					'is_set' => NULL
-					, 'is_int' => NULL
+					'is_set' => NULL,
+					'is_int' => NULL
 				)
 			)
 			, 'posting_id' => array(

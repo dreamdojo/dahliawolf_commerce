@@ -188,6 +188,7 @@ class Product extends _Model {
 				INNER JOIN dahliawolf_v1_2013.posting_product ON posting_product.created = m.pp_created
 			) AS mm ON product.id_product = mm.product_id
 			LEFT JOIN dahliawolf_v1_2013.like_winner ON mm.posting_id = like_winner.posting_id
+			LEFT JOIN dahliawolf_v1_2013.posting AS posting ON mm.posting_id = posting.posting_id
 			INNER JOIN offline_commerce_v1_2013.product_shop ON product.id_product = product_shop.id_product
 			INNER JOIN offline_commerce_v1_2013.shop ON product_shop.id_shop = shop.id_shop
 			INNER JOIN offline_commerce_v1_2013.product_lang ON product.id_product = product_lang.id_product
@@ -199,7 +200,7 @@ class Product extends _Model {
 			LEFT JOIN offline_commerce_v1_2013.tax_rules_group ON product.id_tax_rules_group = tax_rules_group.id_tax_rules_group
 			/*LEFT JOIN offline_commerce_v1_2013.customer ON product.user_id = customer.user_id*/
 
-			LEFT JOIN dahliawolf_v1_2013.user_username ON user_username.user_id = product.user_id
+			LEFT JOIN dahliawolf_v1_2013.user_username ON user_username.user_id = posting.user_id
 
             {$extra_join}
 			LEFT JOIN (

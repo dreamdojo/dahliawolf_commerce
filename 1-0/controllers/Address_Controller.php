@@ -7,8 +7,8 @@ class Address_Controller extends _Controller {
 
 		$calls = array(
 			'get_user_address' => array(
-				'user_id'		=> $params['user_id']
-				, 'address_id' 	=> $params['address_id']
+				'user_id'		=> $params['user_id'],
+				'address_id' 	=> $params['address_id']
 			)
 		);
 
