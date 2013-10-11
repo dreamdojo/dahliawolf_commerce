@@ -45,11 +45,11 @@ class Cart_Controller extends _Controller {
 		);
 
 
-        $logger = new Jk_Logger();
-
-
 		$this->Validate->add_many($input_validations, $validate_params, true);
 		$this->Validate->run();
+
+
+        self::trace("validation passed");
 
 		if (!empty($params['cart_cookie'])) {
 			$params['cart_cookie'] = json_decode($params['cart_cookie'], true);
@@ -60,8 +60,12 @@ class Cart_Controller extends _Controller {
 			|| !is_array($params['cart_cookie'])
 			|| !is_array($params['cart_cookie']['cart'])
 		) {
+            self::trace("HMMM: the cookie is empty");
+
 			return static::wrap_result(true, $data);
 		}
+
+        self::trace("HMMM: we got cookie, continue....");
 
 		$data = $params['cart_cookie'];
 		$data['cart']['carrier'] = array();
@@ -80,6 +84,9 @@ class Cart_Controller extends _Controller {
 		);
 
 		$data['carrier_options'] = array();
+
+        self::trace("what do we have: \n" . var_export($data, true));
+
 
 		if (!empty($data['products']) && is_array($data['products'])) {
 			foreach ($data['products'] as $i => $cart_product) {
