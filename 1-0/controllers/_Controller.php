@@ -16,6 +16,7 @@ class _Controller {
         if(is_array($m) || is_object($m) ) $m = @var_export($m);
 
         $this->logger->LogInfo("$m");
+        error_log("$m");
     }
 
 	public function __construct() {
