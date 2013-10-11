@@ -7,9 +7,15 @@ class _Controller {
 
 	protected $Validate;
 
-    protected function trace()
+    protected function trace($m)
     {
-        $logger = new Jk_Logger( APP_PATH . sprintf('logs/%s.log'), strtolower(get_class($this)));
+        if(!$this->logger){
+            $logger = new Jk_Logger( APP_PATH . sprintf('logs/%s.log'), strtolower(get_class($this)));
+        }
+
+        if(is_array($m) || is_object($m) ) $m = @var_export($m);
+
+        $this->logger->LogInfo("$m");
     }
 
 	public function __construct() {

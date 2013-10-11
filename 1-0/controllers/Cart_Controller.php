@@ -43,6 +43,11 @@ class Cart_Controller extends _Controller {
 				)
 			)
 		);
+
+
+        $logger = new Jk_Logger();
+
+
 		$this->Validate->add_many($input_validations, $validate_params, true);
 		$this->Validate->run();
 
