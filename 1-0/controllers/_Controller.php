@@ -10,7 +10,7 @@ class _Controller {
     protected function trace($m)
     {
         if(!$this->logger){
-            $this->logger = new Jk_Logger( APP_PATH . sprintf('logs/%s.log'), strtolower(get_class($this)));
+            $this->logger = new Jk_Logger( APP_PATH . sprintf('logs/%s.log', strtolower(get_class($this) ) ));
         }
 
         if(is_array($m) || is_object($m) ) $m = @var_export($m);
