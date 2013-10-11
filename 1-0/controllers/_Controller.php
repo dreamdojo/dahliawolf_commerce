@@ -111,7 +111,7 @@ class _Controller {
     {
         $Status_Code = new Status_Code();
 
-        self::trace("request['calls']: " . var_export($request));
+        self::trace("request['calls']: " . var_export($request, true));
 
         $calls = $request['calls'];
         if (is_string($calls)) {
