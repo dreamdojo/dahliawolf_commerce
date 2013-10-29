@@ -1,4 +1,7 @@
 <?
+/**
+ * @property Product Product
+ */
 class Product_Controller extends _Controller {
 
 	public function get_product_details($params = array()) {
