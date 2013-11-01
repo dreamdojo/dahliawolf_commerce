@@ -217,7 +217,8 @@ class Product extends _Model {
 
 		//product.status != :not_status AND
 		if (!empty($user_id)) {
-			$sql .= ' AND product.user_id = :user_id';
+			//$sql .= ' AND product.user_id = :user_id';
+			$sql .= ' AND user_username.user_id = :user_id';
 		}
 
 		$sql .= '
@@ -289,9 +290,10 @@ class Product extends _Model {
 
 			return $data;
 		} catch (Exception $e) {
-			self::$Exception_Helper->server_error_exception('Unable to get product details.');
+			self::$Exception_Helper->server_error_exception('Unable to get products.');
 		}
 	}
+
 
 	public function get_products_in_category($params) {
 
@@ -330,14 +332,20 @@ class Product extends _Model {
 		';
 
 		$values = array(
-			':id_shop' 			=> $params['id_shop']
-			, ':id_category' 	=> $params['id_category']
-			, ':id_lang' 		=> $params['id_lang']
+			':id_shop' 		=> $params['id_shop'] ? $params['id_shop']: 3,
+			':id_category' 	=> $params['id_category'],
+			':id_lang' 		=> $params['id_lang'] ? $params['id_lang'] : 1
 		);
 
 		if (!empty($params['user_id'])) {
 			$values[':user_id'] = $params['user_id'];
 		}
+
+        if(isset($_GET['t']))
+        {
+            echo sprintf("values: %s\nsql: %s", var_export($values), $query);
+        }
+
 
 		try {
 			$query_result = self::$dbs[$this->db_host][$this->db_name]->exec($query, $values);

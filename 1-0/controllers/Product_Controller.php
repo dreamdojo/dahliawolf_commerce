@@ -95,6 +95,101 @@ class Product_Controller extends _Controller {
 
 		// Validations
 		$input_validations = array(
+		    /*
+			'id_shop' => array(
+				'label' => 'Shop Id'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+
+			, 'id_lang' => array(
+				'label' => 'Language Id'
+				, 'rules' => array(
+					'is_set' => NULL
+					, 'is_int' => NULL
+				)
+			)
+
+			, 'user_id' => array(
+				'label' => 'User Id'
+				, 'rules' => array(
+					'is_int' => NULL
+				)
+			)
+		    */
+		);
+
+		$this->Validate->add_many($input_validations, $validate_params, true);
+		$this->Validate->run();
+
+		$user_id = !empty($params['user_id']) ? $params['user_id'] : NULL;
+		$viewer_user_id = !empty($params['viewer_user_id']) ? $params['viewer_user_id'] : NULL;
+
+		$data = $this->Product->get_products(3, 1, $user_id, $viewer_user_id);
+
+		return static::wrap_result(true, $data);
+	}
+
+
+	public function get_category_products($params = array()) {
+
+        $logger = new Jk_Logger(APP_PATH . 'logs/product.log');
+        $logger->LogInfo("request params: " . var_export($params,true));
+
+
+		$this->load('Product');
+
+		$validate_names = array(
+			'id_shop' => NULL
+			, 'id_lang' => NULL
+			, 'user_id' => NULL
+		);
+
+		$validate_params = array_merge($validate_names, $params);
+
+		// Validations
+		$input_validations = array(
+			'id_category' => array(
+				'label' => 'Category Id',
+				 'rules' => array(
+                    'is_set' => NULL,
+                    'is_int' => NULL
+				)
+			)
+		);
+
+		$this->Validate->add_many($input_validations, $validate_params, true);
+		$this->Validate->run();
+
+		$user_id = !empty($params['user_id']) ? $params['user_id'] : NULL;
+		$viewer_user_id = !empty($params['viewer_user_id']) ? $params['viewer_user_id'] : NULL;
+
+		$data = $this->Product->get_products_in_category($params);
+
+		return static::wrap_result(true, $data);
+	}
+
+
+    public function get_user_comissions($params = array())
+    {
+        $logger = new Jk_Logger(APP_PATH . 'logs/product.log');
+        $logger->LogInfo("request params: " . var_export($params,true));
+
+
+		$this->load('Product');
+
+		$validate_names = array(
+			'id_shop' => NULL,
+			'id_lang' => NULL,
+			'user_id' => NULL,
+		);
+
+		$validate_params = array_merge($validate_names, $params);
+
+		// Validations
+		$input_validations = array(
 			'id_shop' => array(
 				'label' => 'Shop Id'
 				, 'rules' => array(

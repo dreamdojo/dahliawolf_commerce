@@ -74,6 +74,83 @@ class User extends _Model {
         $result = self::$dbs[$this->db_host][$this->db_name]->select_single($query, $params);
 		return $result;
 	}
+
+
+
+    public function get_commissions($user_id, $id_shop=3, $id_lang=1 )
+    {
+        $logger = new Jk_Logger(APP_PATH . 'logs/user.log');
+
+        $params = array(
+            ':id_shop' => $id_shop,
+            ':id_lang' => $id_lang,
+            ':user_id' => $user_id,
+            //':active' => '1',
+        );
+
+        $sql = "
+        SELECT SUM(order_detail.product_price) as sales_total
+        FROM order_detail
+        WHERE order_detail.product_id IN
+            (
+              SELECT products.product_id
+              FROM
+                (
+                    SELECT  DISTINCT  product.id_product as 'product_id',
+                    (
+                            SELECT product_file.product_file_id FROM offline_commerce_v1_2013.product_file WHERE product_file.product_id = product.id_product ORDER BY product_file.product_file_id ASC LIMIT 1) AS product_file_id,
+                            IF(EXISTS(SELECT category_product.id_category_product FROM offline_commerce_v1_2013.category_product WHERE category_product.id_category = 1 AND category_product.id_product = product.id_product), 1, 0) AS is_new,
+                            user_username.username as username, IF(user_username.location IS NULL, '', user_username.location) AS 'location',
+                            user_username.user_id
+
+                            FROM offline_commerce_v1_2013.product
+
+                                LEFT JOIN
+                                (
+                                    SELECT m.*, posting_product.posting_id, posting_product.product_id
+                                    FROM
+                                    (
+                                        SELECT MIN(posting_product.created) AS pp_created, GROUP_CONCAT(posting_product.posting_id SEPARATOR '|') AS posting_ids
+                                        FROM dahliawolf_v1_2013.posting
+                                            INNER JOIN dahliawolf_v1_2013.posting_product ON posting.posting_id = posting_product.posting_id
+                                        GROUP BY posting_product.product_id
+                                    ) AS m
+                                    INNER JOIN dahliawolf_v1_2013.posting_product ON posting_product.created = m.pp_created
+                                ) AS mm ON product.id_product = mm.product_id
+
+
+                                LEFT JOIN dahliawolf_v1_2013.posting AS posting ON mm.posting_id = posting.posting_id
+                                INNER JOIN offline_commerce_v1_2013.product_shop ON product.id_product = product_shop.id_product
+                                INNER JOIN offline_commerce_v1_2013.shop ON product_shop.id_shop = shop.id_shop
+                                INNER JOIN offline_commerce_v1_2013.product_lang ON product.id_product = product_lang.id_product
+                                INNER JOIN offline_commerce_v1_2013.lang ON product_lang.id_lang = lang.id_lang
+                                LEFT JOIN offline_commerce_v1_2013.shop AS default_shop ON product.id_shop_default = default_shop.id_shop
+                                LEFT JOIN dahliawolf_v1_2013.user_username ON user_username.user_id = posting.user_id
+
+                            WHERE shop.id_shop = :id_shop AND lang.id_lang = :id_lang
+                            AND product.user_id = :user_id
+
+                    ) AS products
+
+                )
+
+
+        ";
+
+        $logger->LogInfo("query params: " . var_export($params,true));
+
+        if(isset($_GET['t'])) var_dump($sql);
+
+
+        try {
+            $data = self::$dbs[$this->db_host][$this->db_name]->exec($sql, $params);
+
+            return $data;
+        } catch (Exception $e) {
+            self::$Exception_Helper->server_error_exception('Unable to get user comissions.');
+        }
+
+    }
 	
 	public function get_user_by_token($user_id, $token) {
 		$query = '
@@ -153,7 +230,6 @@ class User extends _Model {
 			self::$Exception_Helper->server_error_exception('Unable to get regexp usernames.');
 		}
 	}
-
 
 
 }
