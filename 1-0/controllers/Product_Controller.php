@@ -28,6 +28,7 @@ class Product_Controller extends _Controller {
 					, 'is_int' => NULL
 				)
 			)
+            /*
 			, 'id_shop' => array(
 				'label' => 'Shop Id'
 				, 'rules' => array(
@@ -42,6 +43,7 @@ class Product_Controller extends _Controller {
 					, 'is_int' => NULL
 				)
 			)
+            */
 			, 'user_id' => array(
 				'label' => 'User Id'
 				, 'rules' => array(
@@ -49,13 +51,18 @@ class Product_Controller extends _Controller {
 				)
 			)
 		);
+
+        $id_shop = $params['id_shop']? $params['id_shop'] : 3;
+        $id_lang = $params['id_lang']? $params['id_lang'] : 1;
+
+
 		$this->Validate->add_many($input_validations, $validate_params, true);
 		$this->Validate->run();
 
 		$user_id = !empty($params['user_id']) ? $params['user_id'] : NULL;
         $viewer_user_id = !empty($params['viewer_user_id']) ? $params['viewer_user_id'] : NULL;
 
-		$data['product'] = $this->Product->get_product($params['id_product'], $params['id_shop'], $params['id_lang'], $user_id, $viewer_user_id);
+		$data['product'] = $this->Product->get_product($params['id_product'], $id_shop, $id_lang, $user_id, $viewer_user_id);
 
 		if (empty($data['product'])) {
 			$error = 'Product not found.';
@@ -63,15 +70,15 @@ class Product_Controller extends _Controller {
 			return static::wrap_result(false, NULL, _Model::$Status_Code->get_status_code_request_failed(), $error);
 		}
 
-		$data['combinations'] = $this->Product->get_product_combinations($params['id_product'], $params['id_shop'], $params['id_lang']);
+		$data['combinations'] = $this->Product->get_product_combinations($params['id_product'], $id_shop, $id_lang);
 
-		$data['features'] = $this->Product->get_product_features($params['id_product'], $params['id_shop'], $params['id_lang']);
+		$data['features'] = $this->Product->get_product_features($params['id_product'], $id_shop, $id_lang);
 
-		$data['tags'] = $this->Product->get_product_tags($params['id_product'], $params['id_shop'], $params['id_lang']);
+		$data['tags'] = $this->Product->get_product_tags($params['id_product'], $id_shop, $id_lang);
 
-		$data['comments'] = $this->Product->get_product_comments($params['id_product'], $params['id_shop'], $params['id_lang']);
+		$data['comments'] = $this->Product->get_product_comments($params['id_product'], $id_shop, $id_lang);
 
-		$data['files'] = $this->Product->get_product_files($params['id_product'], $params['id_shop'], $params['id_lang']);
+		$data['files'] = $this->Product->get_product_files($params['id_product'], $id_shop, $id_lang);
 
 		return static::wrap_result(true, $data);
 
