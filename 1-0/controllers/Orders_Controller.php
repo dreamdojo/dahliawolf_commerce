@@ -230,7 +230,7 @@ class Orders_Controller extends _Controller {
 			if ($user_total_credits['total_credits'] < $cart['cart_store_credit']['amount']) {
 				_Model::$Exception_Helper->request_failed_exception('Store credit redemption amount exceeds total store credits.');
 			}
-			if ($cart['cart']['totals']['grand_total'] < $cart['cart_store_credit']['amount']) {
+			if ($cart['cart']['totals']['products'] < $cart['cart_store_credit']['amount']) {
 				_Model::$Exception_Helper->request_failed_exception('Store credit redemption amount exceeds cart total.');
 			}
 		}
