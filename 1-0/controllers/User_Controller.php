@@ -14,7 +14,7 @@
 class User_Controller extends _Controller
 {
 
-    public function get_comissions($params = array())
+    public function get_sales($params = array())
     {
         $logger = new Jk_Logger(APP_PATH . 'logs/product.log');
         $logger->LogInfo("request params: " . var_export($params,true));
@@ -46,7 +46,7 @@ class User_Controller extends _Controller
 
 		$user_id = !empty($params['user_id']) ? $params['user_id'] : NULL;
 
-		$data = $this->User->get_commissions($user_id, $params['id_shop'], $params['id_lang']);
+		$data = $this->User->get_sales($user_id, $params['id_shop'], $params['id_lang']);
 
 		return static::wrap_result(true, $data);
 	}
