@@ -28,22 +28,6 @@ class Product_Controller extends _Controller {
 					, 'is_int' => NULL
 				)
 			)
-            /*
-			, 'id_shop' => array(
-				'label' => 'Shop Id'
-				, 'rules' => array(
-					'is_set' => NULL
-					, 'is_int' => NULL
-				)
-			)
-			, 'id_lang' => array(
-				'label' => 'Language Id'
-				, 'rules' => array(
-					'is_set' => NULL
-					, 'is_int' => NULL
-				)
-			)
-            */
 			, 'user_id' => array(
 				'label' => 'User Id'
 				, 'rules' => array(
@@ -78,16 +62,31 @@ class Product_Controller extends _Controller {
 
 		$data['comments'] = $this->Product->get_product_comments($params['id_product'], $id_shop, $id_lang);
 
-		$data['files'] = $this->Product->get_product_files($params['id_product'], $id_shop, $id_lang);
+		$data['files'] = $this->Product->get_product_files($data['product'], $id_shop, $id_lang);
+
+
+
+        $product_view = new Product_View();
+
+        $view_data = array(
+            'product_id' => $data['product']['id_product'],
+            'user_id' => $data['product']['user_id'],
+        );
+
+        if(!empty($params['viewer_user_id'])) $view_data['viewer_user_id'] =  $params['viewer_user_id'];
+
+        $product_view->addView($view_data);
+
+
 
 		return static::wrap_result(true, $data);
 
 	}
 
-	public function get_products($params = array()) {
+	public function get_products($request_params = array()) {
 
         $logger = new Jk_Logger(APP_PATH . 'logs/product.log');
-        $logger->LogInfo("request params: " . var_export($params,true));
+        $logger->LogInfo("request params: " . var_export($request_params,true));
 
 
 		$this->load('Product');
@@ -98,7 +97,7 @@ class Product_Controller extends _Controller {
 			, 'user_id' => NULL
 		);
 
-		$validate_params = array_merge($validate_names, $params);
+		$validate_params = array_merge($validate_names, $request_params);
 
 		// Validations
 		$input_validations = array(
@@ -131,10 +130,10 @@ class Product_Controller extends _Controller {
 		$this->Validate->add_many($input_validations, $validate_params, true);
 		$this->Validate->run();
 
-		$user_id = !empty($params['user_id']) ? $params['user_id'] : NULL;
-		$viewer_user_id = !empty($params['viewer_user_id']) ? $params['viewer_user_id'] : NULL;
+		$user_id = !empty($request_params['user_id']) ? $request_params['user_id'] : NULL;
+		$viewer_user_id = !empty($request_params['viewer_user_id']) ? $request_params['viewer_user_id'] : NULL;
 
-		$data = $this->Product->get_products(3, 1, $user_id, $viewer_user_id);
+		$data = $this->Product->get_products(3, 1, $request_params, $user_id, $viewer_user_id);
 
 		return static::wrap_result(true, $data);
 	}
