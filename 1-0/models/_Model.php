@@ -1,6 +1,6 @@
 <?
 // Base Model utility properties and methods
-class _Model {
+class _Model extends Jk_Base{
 	public static $domain;
 	public static $site_name;
 	public static $time;
@@ -13,28 +13,82 @@ class _Model {
 	public static $Exception_Helper;
 	
 	protected static $dbs = array();
-	protected $db_host = '';
+    protected $logger;
+
+    protected $db_host = '';
 	protected $db_name = '';
+    protected $db_user = '';
+    protected $db_password = '';
+
+
+    protected $errors =null;
+
+    static protected $data_tables;
+    static protected $primary_fields;
+
+    public static function setDataTable($table)
+    {
+        if(!is_array(self::$data_tables)) self::$data_tables = array();
+        $called_class = get_called_class();
+        self::$data_tables[$called_class] = $table;
+    }
+
+    public static function getDataTable()
+    {
+        if(!is_array(self::$data_tables)) self::$data_tables = array();
+        $called_class = get_called_class();
+        return self::$data_tables[$called_class];
+    }
+
+
+    public static function setPrimaryField($pf)
+    {
+        if(!is_array(self::$primary_fields)) self::$primary_fields = array();
+        $called_class = get_called_class();
+        self::$primary_fields[$called_class] = $pf;
+    }
+
+    public static function getPrimaryField()
+    {
+        if(!is_array(self::$primary_fields)) self::$primary_fields = array();
+        $called_class = get_called_class();
+        self::$primary_fields[$called_class];
+    }
+
+
+    protected function getDbCredentials()
+    {
+        $settings = array(
+            'host' => $this->db_host,
+            'user' => $this->db_user,
+            'password' => $this->db_password,
+            'db_name' => $this->db_name,
+        );
+
+        return $settings;
+    }
 	
-	public function __construct($db_host = DB_API_HOST, $db_user = DB_API_USER, $db_password = DB_API_PASSWORD, $db_name = DB_API_DATABASE) {
-		
-		$this->db_host = $db_host;
-		$this->db_name = $db_name;
+	public function __construct($db_host = DB_API_HOST, $db_user = DB_API_USER, $db_password = DB_API_PASSWORD, $db_name = DB_API_DATABASE)
+    {
+        $this->db_host = $db_host;
+        $this->db_user = $db_user;
+        $this->db_password = $db_password;
+        $this->db_name = $db_name;
 		
 		if (class_exists('Database_Helper') 
 			&& (empty(self::$dbs[$db_host]) 
 			|| empty(self::$dbs[$db_host][$db_name]))
-		) {
+		){
 		
 			if (empty(self::$dbs[$db_host])) {
 				self::$dbs[$db_host] = array();
 			}
 			
 			$settings = array(
-				'host' => $db_host
-				, 'user' => $db_user
-				, 'password' => $db_password
-				, 'db_name' => $db_name
+                'host' => $db_host,
+                'user' => $db_user,
+                'password' => $db_password,
+                'db_name' => $db_name,
 			);
 			self::$dbs[$db_host][$db_name] = new Database_Helper();
 			self::$dbs[$db_host][$db_name]->open_connection($settings);
@@ -52,10 +106,27 @@ class _Model {
 		}
 		
 	}
-	
-	public function get_datetime() {
-		return date('Y-m-d H:i:s', time());
-	}
+
+    public function get_datetime() {
+    		return date('Y-m-d H:i:s', time());
+    }
+
+
+    protected function addError($key, $msg)
+    {
+        if(!$this->errors) $this->errors = array();
+        $this->errors[$key] = $msg;
+    }
+
+    public function getErrors()
+    {
+        return $this->errors;
+    }
+
+    public function hasError()
+    {
+        return (@count($this->errors)>0);
+    }
 	
 	public function __destruct() {
 		/*
@@ -97,48 +168,57 @@ class _Model {
 		return self::$dbs[$this->db_host][$this->db_name]->update($called_class::TABLE, $fields, $where_sql, $where_values, $operators);
 	}
 	
-	public function db_insert($fields, $replace = false) {		
+	public function db_insert($fields, $replace = false, $ignore=true) {
 		$called_class = get_called_class();
-		
-		return self::$dbs[$this->db_host][$this->db_name]->insert($called_class::TABLE, $fields, $replace);
+        $data_table = ( self::getDataTable() ? self::getDataTable() : $called_class::TABLE);
+
+		return self::$dbs[$this->db_host][$this->db_name]->insert($data_table, $fields, $replace, $ignore);
 	}
 	
 	public function db_insert_many($value_lists) {		
 		$called_class = get_called_class();
+        $data_table = ( self::getDataTable() ? self::getDataTable() : $called_class::TABLE);
 		
-		return self::$dbs[$this->db_host][$this->db_name]->insert_many($called_class::TABLE, $value_lists);
+		return self::$dbs[$this->db_host][$this->db_name]->insert_many($data_table, $value_lists);
 	}
 	
 	public function db_delete($where_sql, $parameters) {
 		$called_class = get_called_class();
+        $data_table = ( self::getDataTable() ? self::getDataTable() : $called_class::TABLE);
 
-		return self::$dbs[$this->db_host][$this->db_name]->delete($called_class::TABLE, $where_sql, $parameters);
+		return self::$dbs[$this->db_host][$this->db_name]->delete($data_table, $where_sql, $parameters);
 	}
 	
 	public function db_last_insert_id() {
-		return self::$dbs[$this->db_host][$this->db_name]->last_insert_id();
+        return self::$dbs[$this->db_host][$this->db_name]->last_insert_id();
 	}
 	
 	public function db_row_count() {
 		return self::$dbs[$this->db_host][$this->db_name]->row_count();
 	}
 	
-	protected function do_db_save($values, $info, $has_date_modified = true) {
+	protected function do_db_save($values, $info, $has_date_modified = true, $ignore=true)
+    {
 		$called_class = get_called_class();
-		$key_field = $called_class::PRIMARY_KEY_FIELD;
-		
+		$key_field = self::getPrimaryField() ? self::getPrimaryField() : $called_class::PRIMARY_KEY_FIELD;
+        $logger = new Jk_Logger(APP_PATH.'logs/db_inserts.log');
+
 		// Update
 		if (!empty($info[$key_field]) && is_numeric($info[$key_field])) {
 			$where_values = array(
 				':' . $key_field => $info[$key_field]
 			);
 			$this->db_update($values, $key_field . ' = :' . $key_field, $where_values);
+
+            //$logger->LogInfo("do_db_save: update");
 			
 			return $this->db_row_count() ? $info[$key_field] : NULL;
 		}
 		// Insert
 		else {
-			$this->db_insert($values);
+            //$logger->LogInfo("do_db_save: insert");
+
+			$this->db_insert($values, false, $ignore);
 			$insert_id = $this->db_last_insert_id();
 			
 			return $insert_id;
@@ -158,8 +238,11 @@ class _Model {
 		$called_class = get_called_class();
 		
 		// Default options
-		$single = !empty($options['single']) ? $options['single'] : false;
-		$select_fields = !empty($options['select_fields']) ? $options['select_fields'] : array($called_class::TABLE . '.*');
+        $data_table = ( self::getDataTable() ? self::getDataTable() : $called_class::TABLE);
+        $primary_field = ( self::getPrimaryField() ? self::getPrimaryField() : $called_class::PRIMARY_KEY_FIELD);
+
+        $single = !empty($options['single']) ? $options['single'] : false;
+		$select_fields = !empty($options['select_fields']) ? $options['select_fields'] : array($data_table . '.*');
 		
 		// Format select
 		$select_str = implode(', ', $select_fields);
@@ -176,13 +259,26 @@ class _Model {
 			}
 		}
 		$where_str = implode(' AND ', $wheres);
-		
+
 		$sql = '
 			SELECT ' . $select_str . '
-			FROM ' . $called_class::TABLE . '
-			WHERE ' . (!empty($where_str) ? $where_str : '1') . '
-			ORDER BY ' . $called_class::PRIMARY_KEY_FIELD . ' ASC
-			' . ($single ? 'LIMIT 1' : '');
+			FROM ' . $data_table . '
+			WHERE ' . (!empty($where_str) ? $where_str : '1') . ' ';
+			
+		if (!empty($options['order_by_field'])) {
+			$sql .= ' ORDER BY ' . $options['order_by_field'];
+			if (!empty($options['order_by_desc']) && $options['order_by_desc'] === true) {
+				$sql .= ' DESC ';
+			}
+			else {
+				$sql .= ' ASC ';
+			}
+		}
+		else {
+			$sql .= ' ORDER BY ' . $primary_field . ' ASC ';
+		}
+		
+		$sql .=  $single ? ' LIMIT 1' : '';
 		
 		try {
 			$data = self::$dbs[$this->db_host][$this->db_name]->exec($sql, $pdo_params);
@@ -219,7 +315,6 @@ class _Model {
 			
 		} catch(Exception $e) {
 			self::$Exception_Helper->server_error_exception('Unable to save row to "' . $called_class::TABLE . '". '  . $e->getMessage() . '.');
-			self::$Exception_Helper->server_error_exception('Unable to save changes.');
 		}
 	}
 	
@@ -284,9 +379,39 @@ class _Model {
 		
 		return NULL;
 	}
-	
-	public function truncateNum ($number, $decimals = 2) {
-		return round(floor($number * 100) / 100, $decimals);	
-	}
+
+
+    public function truncateNum ($number, $decimals = 2) {
+   		return round(floor($number * 100) / 100, $decimals);
+   	}
+
+
+    public function fetch($sql, $pdo_params)
+    {
+        return self::query($sql, $pdo_params);
+    }
+
+
+    public function query($sql, $pdo_params)
+    {
+        try {
+            $data = self::$dbs[$this->db_host][$this->db_name]->exec($sql, $pdo_params);
+            return $data;
+        } catch (Exception $e) {
+            self::$Exception_Helper->server_error_exception($e->getMessage());
+            return null;
+        }
+        return null;
+    }
+
+
+    protected function trace($m, $general_log=true)
+    {
+        $m = ( is_array($m) || is_object($m) ?  json_encode($m) : "$m");
+        if($this->logger==null) $this->logger = new Jk_Logger(APP_PATH . sprintf('logs/%s.log', ($general_log?'user_log':strtolower(get_class($this)))), Jk_Logger::DEBUG);
+
+        $this->logger->LogInfo($m);
+    }
+
 }
 ?>
