@@ -17,7 +17,7 @@ class Product extends _Model {
 
         if($viewer_user_id)
         {
-            $extra_join_sql .= 'LEFT JOIN dahliawolf_v1_2013.follow AS follow ON customer.user_id = follow.user_id AND follow.follower_user_id = :viewer_user_id';
+            $extra_join_sql .= 'LEFT JOIN dahliawolf_v1_2013.follow AS follow ON product.user_id = follow.user_id AND follow.follower_user_id = :viewer_user_id';
             $extra_select_str .= ', IF(follow.user_id IS NULL, 0, 1) AS is_following';
         }
 
@@ -138,10 +138,11 @@ class Product extends _Model {
 		}
 	}
 
-	public function get_products($id_shop, $id_lang,  $user_id = NULL, $viewer_user_id=null)
+	public function get_products($id_shop, $id_lang, $request_params = array(),  $user_id = NULL, $viewer_user_id=null)
     {
-
         $logger = new Jk_Logger(APP_PATH . 'logs/product.log');
+
+        $logger->LogInfo("query params: " . var_export($request_params, true));
 
         $extra_join = '';
         $extra_select = '';
@@ -171,8 +172,11 @@ class Product extends _Model {
 			    mm.posting_ids,
 			    IF(like_winner.like_winner_id IS NOT NULL, 1, 0) AS is_winner,
 			    wishlist.wishlist_count,
-                CONCAT('http://content.dahliawolf.com/shop/product/inspirations/image.php?id_product=', product.id_product) AS inspiration_image_url
+                CONCAT('http://content.dahliawolf.com/shop/product/inspirations/image.php?id_product=', product.id_product) AS inspiration_image_url,
+                (SELECT COUNT(*) FROM dahliawolf_v1_2013.product_share WHERE product_share.product_id = mm.product_id) as 'total_shares',
+                (SELECT COUNT(*) FROM dahliawolf_v1_2013.product_view WHERE product_view.product_id = mm.product_id) as 'total_views'
                 {$extra_select}
+
 		FROM offline_commerce_v1_2013.product
 			LEFT JOIN
 			(
@@ -199,6 +203,7 @@ class Product extends _Model {
 			LEFT JOIN offline_commerce_v1_2013.tax_rules_group ON product.id_tax_rules_group = tax_rules_group.id_tax_rules_group
 			/*LEFT JOIN offline_commerce_v1_2013.customer ON product.user_id = customer.user_id*/
 
+
 			LEFT JOIN dahliawolf_v1_2013.user_username ON user_username.user_id = posting.user_id
 
             {$extra_join}
@@ -211,42 +216,56 @@ class Product extends _Model {
 				GROUP BY sub_wishlist.id_product
 			) AS wishlist ON wishlist.id_product = product.id_product
 
-        WHERE shop.id_shop = :id_shop AND lang.id_lang = :id_lang AND product.active = :active ";
+        WHERE shop.id_shop = :id_shop
+            AND lang.id_lang = :id_lang
 
+        ";
+
+        $sql_params = array(
+            ':id_shop' => $id_shop,
+            ':id_lang' => $id_lang,
+        );
+
+
+        $filter_active = isset($request_params['filter_active']) ? (int) $request_params['filter_active'] : 1;
+        if ($filter_active == 1) {
+            $sql_params[':active'] = 1;
+            $sql .= "   AND product.active = :active\n" ;
+        }
+
+
+        $filter_status = isset($request_params['filter_status']) ? (int) $request_params['filter_status'] : 1;
+		if ($filter_status == 1) {
+			$sql .= "   AND product.status IN ('live', 'pre order', 'sold out') \n" ;
+		}
 
 		//product.status != :not_status AND
 		if (!empty($user_id)) {
 			//$sql .= ' AND product.user_id = :user_id';
-			$sql .= ' AND user_username.user_id = :user_id';
+			$sql .= "  AND user_username.user_id = :user_id \n";
 		}
 
-		$sql .= '
-            ORDER BY position ASC, product.id_product DESC
-		';
+		$sql .= "
+            ORDER BY position ASC, product.id_product DESC \n
+		";
 
-		$params = array(
-			':id_shop' => $id_shop,
-			':id_lang' => $id_lang,
-			':active' => '1',
-			//, ':not_status' => 'Pending'
-		);
 
 		if ($user_id) {
-			$params[':user_id'] = $user_id;
+			$sql_params[':user_id'] = $user_id;
 		}
 
 		if ($viewer_user_id) {
-			$params[':viewer_user_id'] = $viewer_user_id;
+			$sql_params[':viewer_user_id'] = $viewer_user_id;
 		}
 
 
-        $logger->LogInfo("query params: " . var_export($params,true));
-
-
-        if(isset($_GET['t'])) var_dump($sql);
+        if(isset($_GET['t'])) {
+            var_dump($sql);
+            var_dump($sql_params);
+        }
 
 		try {
-			$data = self::$dbs[$this->db_host][$this->db_name]->exec($sql, $params);
+			$data = self::$dbs[$this->db_host][$this->db_name]->exec($sql, $sql_params);
 
 			if (!empty($data)) {
 				foreach ($data as $i => $row) {
