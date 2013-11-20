@@ -5,7 +5,7 @@
 class Product_Controller extends _Controller {
 
 	public function get_product_details($params = array()) {
-		$this->load('Product');
+		$this->load('Product', DB_API_HOST, DB_API_USER, DB_API_PASSWORD, DB_API_DATABASE);
 
 		$data = array();
 		$error = NULL;
@@ -54,16 +54,14 @@ class Product_Controller extends _Controller {
 			return static::wrap_result(false, NULL, _Model::$Status_Code->get_status_code_request_failed(), $error);
 		}
 
-		$data['combinations'] = $this->Product->get_product_combinations($params['id_product'], $id_shop, $id_lang);
-
-		$data['features'] = $this->Product->get_product_features($params['id_product'], $id_shop, $id_lang);
-
-		$data['tags'] = $this->Product->get_product_tags($params['id_product'], $id_shop, $id_lang);
-
-		$data['comments'] = $this->Product->get_product_comments($params['id_product'], $id_shop, $id_lang);
-
-		$data['files'] = $this->Product->get_product_files($data['product'], $id_shop, $id_lang);
-
+        if($data['product'])
+        {
+            $data['combinations'] = $this->Product->get_product_combinations($data['product']['id_product'], $id_shop, $id_lang);
+            $data['features'] = $this->Product->get_product_features($data['product']['id_product'], $id_shop, $id_lang);
+            $data['tags'] = $this->Product->get_product_tags($data['product']['id_product'], $id_shop, $id_lang);
+            $data['comments'] = $this->Product->get_product_comments($data['product']['id_product'], $id_shop, $id_lang);
+            $data['files'] = $this->Product->get_product_files($data['product']['id_product'], $id_shop, $id_lang);
+        }
 
 
         $product_view = new Product_View();
