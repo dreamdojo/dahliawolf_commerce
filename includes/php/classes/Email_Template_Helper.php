@@ -46,8 +46,8 @@ class Email_Template_Helper {
 		$customVariables = array_merge(
 			$customVariables
 			, array(
-				'domain' => $templateVariables['domain']
-				, 'site_name' => $templateVariables['site_name']
+			    'domain' => $templateVariables['domain'],
+				'site_name' => $templateVariables['site_name']
 			)
 		);
 		
@@ -56,14 +56,14 @@ class Email_Template_Helper {
 		
 		$secretKey = getSecretKey();
 		$templateVariables = array_merge(
-			$templateVariables
-			, array(
-				'text_body' => $textBody
-				, 'html_body' => $htmlBody
-				, 'domain' => $templateVariables['domain']
-				, 'site_name' => $templateVariables['site_name']
-				, 'key' => md5($templateVariables['email'] . $secretKey)
-				, 'cdn_domain' => $templateVariables['cdn_domain']
+			$templateVariables,
+			array(
+				'text_body' => $textBody,
+				'html_body' => $htmlBody,
+				'domain' => $templateVariables['domain'],
+				'site_name' => $templateVariables['site_name'],
+				'key' => md5($templateVariables['email'] . $secretKey),
+				'cdn_domain' => $templateVariables['cdn_domain'],
 			)
 		);
 		
