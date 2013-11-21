@@ -570,7 +570,7 @@ class Orders_Controller extends _Controller {
         foreach($customer_service as $to_name => $to_email)
         {
             //                                                    ($emailTemplateName,   $customVariables,  $templateVariables,  $from,         $fromEmail,  $to,      $toEmail,  $subject,  $replyToEmail = '', $ccEmail = '', $bccEmail = '', $attachments = array())
-            $email_results_int = $Email_Template_Helper->sendEmail('order-confirmation', $custom_variables, $template_variables, $email_domain, $from_email, $to_name, $to_email, $subject,  $from_email);
+            $email_results_cs = $Email_Template_Helper->sendEmail('order-confirmation', $custom_variables, $template_variables, $email_domain, $from_email, $to_name, $to_email, $subject,  $from_email);
 
         }
 
