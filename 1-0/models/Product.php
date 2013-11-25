@@ -157,18 +157,6 @@ class Product extends _Model {
         }
 
 
-        if(!empty($request_params['filter_min_price']))
-        {
-            $where_sql .=  "\n AND product.price >= {$request_params['filter_min_price']}";
-        }
-
-        if(!empty($request_params['filter_max_price']))
-        {
-            $where_sql .=  "\n AND product.price <= {$request_params['filter_max_price']}";
-        }
-
-
-
         $sql = "
 		SELECT  DISTINCT  product.*,
 		        product_lang.name AS product_lang_name,
@@ -190,7 +178,8 @@ class Product extends _Model {
 			    wishlist.wishlist_count,
                 CONCAT('http://content.dahliawolf.com/shop/product/inspirations/image.php?id_product=', product.id_product) AS inspiration_image_url,
                 (SELECT COUNT(*) FROM dahliawolf_v1_2013.product_share WHERE product_share.product_id = mm.product_id) as 'total_shares',
-                (SELECT COUNT(*) FROM dahliawolf_v1_2013.product_view WHERE product_view.product_id = mm.product_id) as 'total_views'
+                (SELECT COUNT(*) FROM dahliawolf_v1_2013.product_view WHERE product_view.product_id = mm.product_id) as 'total_views',
+                (SELECT COUNT(*) FROM offline_commerce_v1_2013.order_detail WHERE order_detail.product_id = mm.product_id) as 'total_sales'
                 {$extra_select}
 
 		FROM offline_commerce_v1_2013.product
@@ -243,6 +232,17 @@ class Product extends _Model {
             ':id_lang' => $id_lang,
         );
 
+        if(!empty($request_params['filter_min_price']))
+        {
+            $where_sql .=  "\n AND product.price >= {$request_params['filter_min_price']}";
+        }
+
+        if(!empty($request_params['filter_max_price']))
+        {
+            $where_sql .=  "\n AND product.price <= {$request_params['filter_max_price']}";
+        }
+
+
 
         $filter_active = isset($request_params['filter_active']) ? (int) $request_params['filter_active'] : 1;
         if ($filter_active == 1) {
@@ -262,9 +262,22 @@ class Product extends _Model {
 			$sql .= "  AND user_username.user_id = :user_id \n";
 		}
 
-		$sql .= "
-            ORDER BY position ASC, product.id_product DESC \n
-		";
+
+
+        //$request_params['sort'] = str_replace('  ', ' ', $request_params['sort']);
+        $valid_sorts = array("total_shares", "total_views", "price");
+        list($sort,$order) = explode('-', $request_params['sort']);
+        if ( in_array($sort, $valid_sorts) ) {
+            $sort_str =  stripos( $order, 'ASC' ) > -1? "$sort ASC" : "$sort DESC";
+
+           $sql .= " ORDER BY  $sort_str \n" ;
+        }else{
+
+            $sql .= "
+                      ORDER BY position ASC, product.id_product DESC \n
+          		";
+        }
+
 
 
 		if ($user_id) {
@@ -279,6 +292,7 @@ class Product extends _Model {
         if(isset($_GET['t'])) {
             var_dump($sql);
             var_dump($sql_params);
+            var_dump($request_params);
         }
 
 		try {
