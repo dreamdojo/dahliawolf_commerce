@@ -81,11 +81,10 @@ class Product_Controller extends _Controller {
 
 	}
 
-	public function get_products($request_params = array()) {
-
+	public function get_products($request_params = array())
+    {
         $logger = new Jk_Logger(APP_PATH . 'logs/product.log');
         $logger->LogInfo("request params: " . var_export($request_params,true));
-
 
 		$this->load('Product');
 
@@ -100,30 +99,19 @@ class Product_Controller extends _Controller {
 		// Validations
 		$input_validations = array(
 		    /*
-			'id_shop' => array(
-				'label' => 'Shop Id'
-				, 'rules' => array(
-					'is_set' => NULL
-					, 'is_int' => NULL
-				)
-			)
-
-			, 'id_lang' => array(
-				'label' => 'Language Id'
-				, 'rules' => array(
-					'is_set' => NULL
-					, 'is_int' => NULL
-				)
-			)
-
 			, 'user_id' => array(
 				'label' => 'User Id'
 				, 'rules' => array(
 					'is_int' => NULL
 				)
-			)
-		    */
+			)*/
 		);
+
+        $id_shop = $request_params['id_shop']? $request_params['id_shop'] : 3;
+        $id_lang = $request_params['id_lang']? $request_params['id_lang'] : 1;
+
+        $request_params['filter_min_price'] = $request_params['filter_min_price']? floatval( $request_params['filter_min_price'] ): 0;
+        $request_params['filter_max_price'] = $request_params['filter_max_price']? floatval( $request_params['filter_max_price'] ): 999999;
 
 		$this->Validate->add_many($input_validations, $validate_params, true);
 		$this->Validate->run();
@@ -131,7 +119,7 @@ class Product_Controller extends _Controller {
 		$user_id = !empty($request_params['user_id']) ? $request_params['user_id'] : NULL;
 		$viewer_user_id = !empty($request_params['viewer_user_id']) ? $request_params['viewer_user_id'] : NULL;
 
-		$data = $this->Product->get_products(3, 1, $request_params, $user_id, $viewer_user_id);
+		$data = $this->Product->get_products($id_shop, $id_lang, $request_params, $user_id, $viewer_user_id);
 
 		return static::wrap_result(true, $data);
 	}

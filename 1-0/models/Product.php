@@ -138,11 +138,15 @@ class Product extends _Model {
 		}
 	}
 
+
+
 	public function get_products($id_shop, $id_lang, $request_params = array(),  $user_id = NULL, $viewer_user_id=null)
     {
         $logger = new Jk_Logger(APP_PATH . 'logs/product.log');
 
         $logger->LogInfo("query params: " . var_export($request_params, true));
+
+        $where_sql = "";
 
         $extra_join = '';
         $extra_select = '';
@@ -153,7 +157,19 @@ class Product extends _Model {
         }
 
 
-		$sql = "
+        if(!empty($request_params['filter_min_price']))
+        {
+            $where_sql .=  "\n AND product.price >= {$request_params['filter_min_price']}";
+        }
+
+        if(!empty($request_params['filter_max_price']))
+        {
+            $where_sql .=  "\n AND product.price <= {$request_params['filter_max_price']}";
+        }
+
+
+
+        $sql = "
 		SELECT  DISTINCT  product.*,
 		        product_lang.name AS product_lang_name,
 		        product_lang.name AS product_name,
@@ -218,6 +234,7 @@ class Product extends _Model {
 
         WHERE shop.id_shop = :id_shop
             AND lang.id_lang = :id_lang
+            {$where_sql}
 
         ";
 
@@ -267,50 +284,59 @@ class Product extends _Model {
 		try {
 			$data = self::$dbs[$this->db_host][$this->db_name]->exec($sql, $sql_params);
 
-			if (!empty($data)) {
-				foreach ($data as $i => $row) {
-					$posting_ids = explode('|', $row['posting_ids']);
-
-					$posts = array();
-
-					if (!empty($posting_ids)) {
-						$query = '
-							SELECT posting.*, image.imagename, image.source, image.dimensionsX AS width, image.dimensionsY AS height
-								, user_username.username, user_username.avatar
-							FROM dahliawolf_v1_2013.posting
-								INNER JOIN dahliawolf_v1_2013.image ON posting.image_id = image.id
-								INNER JOIN dahliawolf_v1_2013.user_username ON posting.user_id = user_username.user_id
-							WHERE posting.posting_id = :posting_id
-						';
-
-						foreach ($posting_ids as $posting_id) {
-							$values = array(
-								':posting_id' => $posting_id
-							);
-							$post = self::$dbs[$this->db_host][$this->db_name]->select_single($query, $values);
-
-							if (!empty($post)) {
-								array_push($posts, $post);
-							}
-						}
-					}
-
-                    $product_id = $data[$i]['id_product'];
-                    $product_files = $this->get_product_files($product_id, $id_shop, $id_lang );
-                    $data[$i]['product_images'] = $product_files;
-
-					if (!empty($posts)) {
-						$data[$i]['posts'] = $posts;
-					}
-					unset($data[$i]['posting_ids']);
-				}
-			}
+			 self::addProductPostings($data, $id_shop, $id_lang);
 
 			return $data;
 		} catch (Exception $e) {
 			self::$Exception_Helper->server_error_exception('Unable to get products.');
 		}
 	}
+
+
+
+    protected function addProductPostings(&$data, $id_shop, $id_lang)
+    {
+        if (!empty($data)) {
+            foreach ($data as $i => $row) {
+                $posting_ids = explode('|', $row['posting_ids']);
+
+                $posts = array();
+
+                if (!empty($posting_ids)) {
+                    $query = '
+                        SELECT posting.*, image.imagename, image.source, image.dimensionsX AS width, image.dimensionsY AS height
+                            , user_username.username, user_username.avatar
+                        FROM dahliawolf_v1_2013.posting
+                            INNER JOIN dahliawolf_v1_2013.image ON posting.image_id = image.id
+                            INNER JOIN dahliawolf_v1_2013.user_username ON posting.user_id = user_username.user_id
+                        WHERE posting.posting_id = :posting_id
+                    ';
+
+                    foreach ($posting_ids as $posting_id) {
+                        $values = array(
+                            ':posting_id' => $posting_id
+                        );
+                        $post = self::$dbs[$this->db_host][$this->db_name]->select_single($query, $values);
+
+                        if (!empty($post)) {
+                            array_push($posts, $post);
+                        }
+                    }
+                }
+
+                 $product_id = $data[$i]['id_product'];
+                 $product_files = $this->get_product_files($product_id, $id_shop, $id_lang );
+                 $data[$i]['product_images'] = $product_files;
+
+                if (!empty($posts)) {
+                    $data[$i]['posts'] = $posts;
+                }
+                unset($data[$i]['posting_ids']);
+            }
+        }
+
+        return $data;
+    }
 
 
 	public function get_products_in_category($params) {
