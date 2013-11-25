@@ -1,10 +1,18 @@
 <?
+/**
+ * @property Product Product
+ * @property Category Category
+ */
 class Category_Controller extends _Controller {
+
 	
 	public function get_shop_categories($params) {
 		$this->load('Category');
+
+        if($params['id_shop']=='' || !$params['id_shop']) $params['id_shop'] = 3;
+        if($params['id_lang']=='' || !$params['id_lang']) $params['id_lang'] = 1;
 		
-		$data = $this->Category->get_shop_categories($params);
+		$data = $this->Category->getShopCategories($params);
 		return static::wrap_result(true, $data);
 	}
 	
@@ -26,6 +34,20 @@ class Category_Controller extends _Controller {
 		$data = $this->Category->get_shop_categories($params);
 		return static::wrap_result(true, $data);
 	}
+
+
+    public function get_categories($params=array())
+    {
+        $category = new Category();
+
+        if($params['id_shop']=='' || !$params['id_shop']) $params['id_shop'] = 3;
+        if($params['id_lang']=='' || !$params['id_lang']) $params['id_lang'] = 1;
+
+        $data = $category->getCategories($params);
+
+
+        return $data;
+    }
 	
 	public function get_products_in_category($params) {
 		$this->load('Product');

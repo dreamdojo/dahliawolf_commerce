@@ -86,7 +86,7 @@ if (isset($_REQUEST['api']) && $_REQUEST['api'] == 'shop') {
 		$conditions['id_lang'] = $_REQUEST['id_lang'];
 		
 		$params['conditions'] 	= $conditions;
-		echo json_encode($category->get_shop_categories($params));
+		echo json_encode($category->getShopCategories($params));
 		return;
 	} elseif ($_REQUEST['function'] == 'get_products_in_category') {
 		$params 	= array();
