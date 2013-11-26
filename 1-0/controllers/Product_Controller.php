@@ -155,10 +155,14 @@ class Product_Controller extends _Controller {
 		$this->Validate->add_many($input_validations, $validate_params, true);
 		$this->Validate->run();
 
-		$user_id = !empty($params['user_id']) ? $params['user_id'] : NULL;
-		$viewer_user_id = !empty($params['viewer_user_id']) ? $params['viewer_user_id'] : NULL;
+        $id_shop = $params['id_shop']? $params['id_shop'] : 3;
+        $id_lang = $params['id_lang']? $params['id_lang'] : 1;
 
-		$data = $this->Product->get_products_in_category($params);
+		$user_id = !empty($params['user_id']) ? $params['user_id'] : NULL;
+        $viewer_user_id = !empty($request_params['viewer_user_id']) ? $request_params['viewer_user_id'] : NULL;
+
+
+		$data = $this->Product->get_products_in_category($params, $id_shop, $id_lang, $viewer_user_id);
 
 		return static::wrap_result(true, $data);
 	}

@@ -157,6 +157,17 @@ class Product extends _Model {
         }
 
 
+        if(!empty($request_params['filter_min_price']))
+        {
+            $where_sql .=  "\n AND product.price >= {$request_params['filter_min_price']}";
+        }
+
+        if(!empty($request_params['filter_max_price']))
+        {
+            $where_sql .=  "\n AND product.price <= {$request_params['filter_max_price']}";
+        }
+
+
         $sql = "
 		SELECT  DISTINCT  product.*,
 		        product_lang.name AS product_lang_name,
@@ -224,25 +235,12 @@ class Product extends _Model {
         WHERE shop.id_shop = :id_shop
             AND lang.id_lang = :id_lang
             {$where_sql}
-
         ";
 
         $sql_params = array(
             ':id_shop' => $id_shop,
             ':id_lang' => $id_lang,
         );
-
-        if(!empty($request_params['filter_min_price']))
-        {
-            $where_sql .=  "\n AND product.price >= {$request_params['filter_min_price']}";
-        }
-
-        if(!empty($request_params['filter_max_price']))
-        {
-            $where_sql .=  "\n AND product.price <= {$request_params['filter_max_price']}";
-        }
-
-
 
         $filter_active = isset($request_params['filter_active']) ? (int) $request_params['filter_active'] : 1;
         if ($filter_active == 1) {
@@ -263,7 +261,6 @@ class Product extends _Model {
 		}
 
 
-
         //$request_params['sort'] = str_replace('  ', ' ', $request_params['sort']);
         $valid_sorts = array("total_shares", "total_views", "price");
         list($sort,$order) = explode('-', $request_params['sort']);
@@ -277,7 +274,6 @@ class Product extends _Model {
                       ORDER BY position ASC, product.id_product DESC \n
           		";
         }
-
 
 
 		if ($user_id) {
@@ -299,6 +295,7 @@ class Product extends _Model {
 			$data = self::$dbs[$this->db_host][$this->db_name]->exec($sql, $sql_params);
 
 			 self::addProductPostings($data, $id_shop, $id_lang);
+			 self::addProductImages($data, $id_shop, $id_lang);
 
 			return $data;
 		} catch (Exception $e) {
@@ -338,10 +335,6 @@ class Product extends _Model {
                     }
                 }
 
-                 $product_id = $data[$i]['id_product'];
-                 $product_files = $this->get_product_files($product_id, $id_shop, $id_lang );
-                 $data[$i]['product_images'] = $product_files;
-
                 if (!empty($posts)) {
                     $data[$i]['posts'] = $posts;
                 }
@@ -353,10 +346,34 @@ class Product extends _Model {
     }
 
 
-	public function get_products_in_category($params) {
+    protected function addProductImages(&$data, $id_shop, $id_lang)
+    {
+        foreach($data as &$prod_data )
+        {
+            $product_files = $this->get_product_files($prod_data['id_product'], $id_shop, $id_lang );
+            $prod_data['product_images'] = $product_files;
+        }
 
-		$query = '
-			SELECT product.*, product_lang.name AS product_lang_name,
+        return $data;
+
+    }
+
+	public function get_products_in_category($params, $id_shop, $id_lang, $viewer_user_id=null)
+    {
+
+        $extra_join = '';
+        $extra_select = '';
+        if($viewer_user_id)
+        {
+            $extra_select = ", wishlist_id.id_favorite_product as 'wishlist_id'";
+            $extra_join = "LEFT JOIN offline_commerce_v1_2013.favorite_product AS wishlist_id ON wishlist_id.id_product = product.id_product AND  wishlist_id.id_customer = :viewer_user_id";
+        }
+
+		$sql = "
+			SELECT
+			    product.id_product as 'product_id',
+			    product.*,
+                product_lang.name AS product_lang_name,
 			    product_lang.name AS product_name,
 			    product_lang.description,
 			    product_lang.description_short,
@@ -367,25 +384,61 @@ class Product extends _Model {
 			    category_product.position,
 			    customer.username,
 			    (SELECT product_file.product_file_id FROM product_file WHERE product_file.product_id = product.id_product ORDER BY product_file.product_file_id ASC LIMIT 1) AS product_file_id,
-			    IF(EXISTS(SELECT category_product.id_category_product FROM category_product WHERE category_product.id_category = 1 AND category_product.id_product = product.id_product), 1, 0) AS is_new
+			    IF(EXISTS(SELECT category_product.id_category_product FROM category_product WHERE category_product.id_category = 1 AND category_product.id_product = product.id_product), 1, 0) AS is_new,
+
+                IF(product_shop.position IS NULL, 999999, product_shop.position) AS 'position',
+                product_lang.description, product_lang.description_short, product_lang.meta_description, product_lang.meta_keywords, product_lang.meta_title,
+                (SELECT product_file.product_file_id FROM offline_commerce_v1_2013.product_file WHERE product_file.product_id = product.id_product ORDER BY product_file.product_file_id ASC LIMIT 1) AS product_file_id,
+                IF(EXISTS(SELECT category_product.id_category_product FROM offline_commerce_v1_2013.category_product WHERE category_product.id_category = 1 AND category_product.id_product = product.id_product), 1, 0) AS is_new,
+                user_username.username as username, IF(user_username.location IS NULL, '', user_username.location) AS 'location',
+                IFNULL(user_username.avatar, '/avatar.php?user_id=') as 'avatar',
+                mm.posting_ids,
+                IF(like_winner.like_winner_id IS NOT NULL, 1, 0) AS is_winner,
+                ##wishlist.wishlist_count,
+                CONCAT('http://content.dahliawolf.com/shop/product/inspirations/image.php?id_product=', product.id_product) AS inspiration_image_url,
+                (SELECT COUNT(*) FROM dahliawolf_v1_2013.product_share WHERE product_share.product_id = mm.product_id) as 'total_shares',
+                (SELECT COUNT(*) FROM dahliawolf_v1_2013.product_view WHERE product_view.product_id = mm.product_id) as 'total_views',
+                (SELECT COUNT(*) FROM offline_commerce_v1_2013.order_detail WHERE order_detail.product_id = mm.product_id) as 'total_sales'
+
+
 			FROM category
-				INNER JOIN category_shop ON category.id_category = category_shop.id_category
-				INNER JOIN category_product ON category.id_category = category_product.id_category
+
+                INNER JOIN category_product ON category.id_category = category_product.id_category
 				INNER JOIN product ON category_product.id_product = product.id_product
+
+                LEFT JOIN
+                (
+                    SELECT m.*, posting_product.posting_id, posting_product.product_id
+                    FROM
+                    (
+                        SELECT MIN(posting_product.created) AS pp_created, GROUP_CONCAT(posting_product.posting_id SEPARATOR '|') AS posting_ids
+                        FROM dahliawolf_v1_2013.posting
+                            INNER JOIN dahliawolf_v1_2013.posting_product ON posting.posting_id = posting_product.posting_id
+                        GROUP BY posting_product.product_id
+                    ) AS m
+                    INNER JOIN dahliawolf_v1_2013.posting_product ON posting_product.created = m.pp_created
+                ) AS mm ON product.id_product = mm.product_id
+			    LEFT JOIN dahliawolf_v1_2013.posting AS posting ON mm.posting_id = posting.posting_id
+                LEFT JOIN dahliawolf_v1_2013.like_winner ON mm.posting_id = like_winner.posting_id
+
+				INNER JOIN category_shop ON category.id_category = category_shop.id_category
 				INNER JOIN product_lang ON product.id_product = product_lang.id_product
 				INNER JOIN product_shop ON product.id_product = product_shop.id_product
 				LEFT JOIN customer ON product.user_id = customer.user_id
+
+				LEFT JOIN dahliawolf_v1_2013.user_username ON user_username.user_id = posting.user_id
+
 			WHERE category_shop.id_shop = :id_shop
 				AND category.id_category = :id_category
 				AND product_lang.id_lang = :id_lang
 				AND product_shop.active = 1
-				AND category.active = 1';
+				AND category.active = 1
+				AND product.active = 1
 
-		if (!empty($params['user_id'])) {
-			$query .= ' AND product.user_id = :user_id';
-		}
+            ";
 
-		$query .= '
+
+        $sql .= '
 			ORDER BY category_product.position ASC
 		';
 
@@ -395,18 +448,21 @@ class Product extends _Model {
 			':id_lang' 		=> $params['id_lang'] ? $params['id_lang'] : 1
 		);
 
+
 		if (!empty($params['user_id'])) {
 			$values[':user_id'] = $params['user_id'];
 		}
 
         if(isset($_GET['t']))
         {
-            echo sprintf("values: %s\nsql: %s", var_export($values), $query);
+            echo sprintf("values: %s\nsql: %s", var_export($values), $sql);
         }
 
 
 		try {
-			$query_result = self::$dbs[$this->db_host][$this->db_name]->exec($query, $values);
+			$query_result = self::$dbs[$this->db_host][$this->db_name]->exec($sql, $values);
+            self::addProductImages($query_result, $id_shop, $id_lang);
+
 			if (empty($query_result)) return NULL;
 			return $query_result;
 		} catch (Exception $e) {
