@@ -89,9 +89,9 @@ class Product_Controller extends _Controller {
 		$this->load('Product');
 
 		$validate_names = array(
-			'id_shop' => NULL
-			, 'id_lang' => NULL
-			, 'user_id' => NULL
+			'id_shop' => NULL,
+			'id_lang' => NULL,
+			'user_id' => NULL,
 		);
 
 		$validate_params = array_merge($validate_names, $request_params);
@@ -113,8 +113,10 @@ class Product_Controller extends _Controller {
         $request_params['filter_min_price'] = $request_params['filter_min_price']? floatval( $request_params['filter_min_price'] ): 0;
         $request_params['filter_max_price'] = $request_params['filter_max_price']? floatval( $request_params['filter_max_price'] ): 999999;
 
+        /*
 		$this->Validate->add_many($input_validations, $validate_params, true);
 		$this->Validate->run();
+        */
 
 		$user_id = !empty($request_params['user_id']) ? $request_params['user_id'] : NULL;
 		$viewer_user_id = !empty($request_params['viewer_user_id']) ? $request_params['viewer_user_id'] : NULL;

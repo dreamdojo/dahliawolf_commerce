@@ -140,7 +140,7 @@ class Product extends _Model {
 
 
 
-	public function get_products($id_shop, $id_lang, $request_params = array(),  $user_id = NULL, $viewer_user_id=null)
+	public function get_products($id_shop=3, $id_lang=1, $request_params = array(),  $user_id = NULL, $viewer_user_id=null)
     {
         $logger = new Jk_Logger(APP_PATH . 'logs/product.log');
 
@@ -156,6 +156,11 @@ class Product extends _Model {
             $extra_join = "LEFT JOIN offline_commerce_v1_2013.favorite_product AS wishlist_id ON wishlist_id.id_product = product.id_product AND  wishlist_id.id_customer = :viewer_user_id";
         }
 
+        // Search
+        if (!empty($request_params['q'])) {
+            $where_sql .= ' AND (product_lang.description LIKE :q OR product_lang.name LIKE :q)';
+            $values[':q'] = "%{$request_params['q']}%";
+        }
 
         if(!empty($request_params['filter_min_price']))
         {
@@ -166,6 +171,9 @@ class Product extends _Model {
         {
             $where_sql .=  "\n AND product.price <= {$request_params['filter_max_price']}";
         }
+
+
+        $inner_offset_limit = $this->generateLimitOffset($request_params, true);
 
 
         $sql = "
@@ -242,6 +250,12 @@ class Product extends _Model {
             ':id_lang' => $id_lang,
         );
 
+        // Search
+        if (!empty($request_params['q'])) {
+            $sql_params[':q'] = "%{$request_params['q']}%";
+        }
+
+
         $filter_active = isset($request_params['filter_active']) ? (int) $request_params['filter_active'] : 1;
         if ($filter_active == 1) {
             $sql_params[':active'] = 1;
@@ -274,6 +288,9 @@ class Product extends _Model {
                       ORDER BY position ASC, product.id_product DESC \n
           		";
         }
+
+
+        $sql .= "\n {$inner_offset_limit}";
 
 
 		if ($user_id) {
@@ -369,6 +386,9 @@ class Product extends _Model {
             $extra_join = "LEFT JOIN offline_commerce_v1_2013.favorite_product AS wishlist_id ON wishlist_id.id_product = product.id_product AND  wishlist_id.id_customer = :viewer_user_id";
         }
 
+        $inner_offset_limit = $this->generateLimitOffset($params, true);
+
+
 		$sql = "
 			SELECT
 			    product.id_product as 'product_id',
@@ -441,6 +461,10 @@ class Product extends _Model {
         $sql .= '
 			ORDER BY category_product.position ASC
 		';
+
+
+        $sql .= "\n {$inner_offset_limit}";
+
 
 		$values = array(
 			':id_shop' 		=> $params['id_shop'] ? $params['id_shop']: 3,
@@ -1421,5 +1445,19 @@ class Product extends _Model {
 			self::$Exception_Helper->server_error_exception('Unable to get posting product.');
 		}
 	}
+
+
+    protected function generateLimitOffset($params, $offset=true)
+    {
+        $limit_offset_str = '';
+        if (!empty($params['limit'])) {
+            $limit_offset_str .= ' LIMIT ' . (int)$params['limit'];
+        }
+        if ($offset && !empty($params['offset'])) {
+            $limit_offset_str .= ' OFFSET ' . (int)$params['offset'];
+        }
+
+        return $limit_offset_str;
+    }
 }
 ?>
