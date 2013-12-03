@@ -40,6 +40,7 @@ class Product extends _Model {
 			, IF(EXISTS(SELECT category_product.id_category_product FROM offline_commerce_v1_2013.category_product WHERE category_product.id_category = 1 AND category_product.id_product = product.id_product), 1, 0) AS is_new
 			, mm.posting_ids
 			, IF(like_winner.like_winner_id IS NOT NULL, 1, 0) AS is_winner
+			, (SELECT COUNT(*) FROM offline_commerce_v1_2013.order_detail WHERE order_detail.product_id = mm.product_id) as 'total_sales'
 			{$extra_select_str}
 		FROM offline_commerce_v1_2013.product
 			LEFT JOIN
