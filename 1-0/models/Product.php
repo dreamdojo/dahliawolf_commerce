@@ -315,6 +315,7 @@ class Product extends _Model {
 
 			 self::addProductPostings($data, $id_shop, $id_lang);
 			 self::addProductImages($data, $id_shop, $id_lang);
+			 self::addProductSales($data, $id_shop, $id_lang);
 
 			return $data;
 		} catch (Exception $e) {
@@ -323,6 +324,15 @@ class Product extends _Model {
 	}
 
 
+    protected function addProductSales(&$data, $id_shop=3, $id_lang=1)
+    {
+        foreach($data as &$prod_data )
+        {
+            $sales = $this->get_sales($prod_data['user_id'], $prod_data['product_id'], true);
+            $prod_data['product_sales'] = $sales;
+        }
+
+    }
 
     protected function addProductPostings(&$data, $id_shop, $id_lang)
     {
