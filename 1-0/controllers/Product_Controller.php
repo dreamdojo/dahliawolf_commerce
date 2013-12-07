@@ -420,6 +420,57 @@ class Product_Controller extends _Controller {
 
 		return static::wrap_result(true, $data);
 	}
+
+
+
+
+    public function get_sales($params = array())
+    {
+        $logger = new Jk_Logger(APP_PATH . 'logs/product.log');
+        $logger->LogInfo("request params: " . var_export($params,true));
+
+
+		//$this->load('Product');
+		//$this->load('User');
+
+		$validate_names = array(
+			'id_shop' => NULL,
+			'id_lang' => NULL,
+			'user_id' => NULL,
+		);
+
+		$validate_params = array_merge($validate_names, $params);
+
+		// Validations
+		$input_validations = array(
+            'user_id' => array(
+				'label' => 'User Id',
+				'rules' => array(
+					'is_int' => NULL
+				)
+			),
+            'product_id' => array(
+				'label' => 'Product Id',
+				'rules' => array(
+					'is_int' => NULL
+				)
+			)
+		);
+
+		$this->Validate->add_many($input_validations, $validate_params, true);
+		$this->Validate->run();
+
+		$user_id = !empty($params['user_id']) ? $params['user_id'] : NULL;
+		$product_id = !empty($params['product_id']) ? $params['product_id'] : NULL;
+
+        $product = new Product();
+
+        $summary =  isset($params['summary']) && (int)$params['summary'] == 1 ? true : false;
+        $data = $product->get_sales($user_id, $product_id, $summary);
+
+		return $data;
+	}
+
 }
 
 ?>
