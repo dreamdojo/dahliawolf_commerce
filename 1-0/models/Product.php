@@ -100,7 +100,8 @@ class Product extends _Model {
 			$data = self::$dbs[$this->db_host][$this->db_name]->select_single($sql, $params);
 
 			if (!empty($data)) {
-				$posting_ids = explode('|', $data['posting_ids']);
+
+                $posting_ids = explode('|', $data['posting_ids']);
 
 				$posts = array();
 
@@ -356,7 +357,7 @@ class Product extends _Model {
                 if (!empty($posts)) {
                     $data[$i]['posts'] = $posts;
                 }
-                unset($data[$i]['posting_ids']);
+                //if($data[$i] && $data[$i]['posting_ids']) unset($data[$i]['posting_ids']);
             }
         }
 
@@ -391,7 +392,7 @@ class Product extends _Model {
 
 
 		$sql = "
-			SELECT
+			SELECT DISTINCT
 			    product.id_product as 'product_id',
 			    product.*,
                 product_lang.name AS product_lang_name,
