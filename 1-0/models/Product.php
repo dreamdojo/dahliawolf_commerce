@@ -200,7 +200,8 @@ class Product extends _Model {
                 CONCAT('http://content.dahliawolf.com/shop/product/inspirations/image.php?id_product=', product.id_product) AS inspiration_image_url,
                 (SELECT COUNT(*) FROM dahliawolf_v1_2013.product_share WHERE product_share.product_id = mm.product_id) as 'total_shares',
                 (SELECT COUNT(*) FROM dahliawolf_v1_2013.product_view WHERE product_view.product_id = mm.product_id) as 'total_views',
-                (SELECT COUNT(*) FROM offline_commerce_v1_2013.order_detail WHERE order_detail.product_id = mm.product_id) as 'total_sales'
+                (SELECT COUNT(*) FROM offline_commerce_v1_2013.order_detail WHERE order_detail.product_id = mm.product_id) as 'total_sales',
+                (SELECT SUM(order_detail.product_price) FROM offline_commerce_v1_2013.order_detail WHERE order_detail.product_id = mm.product_id) as 'total_sale_amount'
                 {$extra_select}
 
 		FROM offline_commerce_v1_2013.product
@@ -315,7 +316,7 @@ class Product extends _Model {
 
 			 self::addProductPostings($data, $id_shop, $id_lang);
 			 self::addProductImages($data, $id_shop, $id_lang);
-			 self::addProductSales($data, $id_shop, $id_lang);
+			 //self::addProductSales($data, $id_shop, $id_lang);
 
 			return $data;
 		} catch (Exception $e) {
@@ -328,8 +329,10 @@ class Product extends _Model {
     {
         foreach($data as &$prod_data )
         {
-            $sales = $this->get_sales($prod_data['user_id'], $prod_data['product_id'], true);
+            $sales = $this->get_sales($prod_data['user_id'], $prod_data['product_id']);
             $prod_data['product_sales'] = $sales;
+
+            var_dump($sales);
         }
 
     }
@@ -1539,7 +1542,7 @@ class Product extends _Model {
 
                             WHERE shop.id_shop = :id_shop AND lang.id_lang = :id_lang
                                 AND product.id_product = :product_id
-                                AND product.user_id = :user_id
+                                #AND product.user_id = :user_id
 
                     ) AS products
 
