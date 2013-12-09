@@ -41,6 +41,7 @@ class Product extends _Model {
 			, mm.posting_ids
 			, IF(like_winner.like_winner_id IS NOT NULL, 1, 0) AS is_winner
 			, (SELECT COUNT(*) FROM offline_commerce_v1_2013.order_detail WHERE order_detail.product_id = mm.product_id) as 'total_sales'
+			, (SELECT SUM(order_detail.product_price) FROM offline_commerce_v1_2013.order_detail WHERE order_detail.product_id = mm.product_id) as 'total_sales_amount'
 			{$extra_select_str}
 		FROM offline_commerce_v1_2013.product
 			LEFT JOIN
@@ -201,7 +202,7 @@ class Product extends _Model {
                 (SELECT COUNT(*) FROM dahliawolf_v1_2013.product_share WHERE product_share.product_id = mm.product_id) as 'total_shares',
                 (SELECT COUNT(*) FROM dahliawolf_v1_2013.product_view WHERE product_view.product_id = mm.product_id) as 'total_views',
                 (SELECT COUNT(*) FROM offline_commerce_v1_2013.order_detail WHERE order_detail.product_id = mm.product_id) as 'total_sales',
-                (SELECT SUM(order_detail.product_price) FROM offline_commerce_v1_2013.order_detail WHERE order_detail.product_id = mm.product_id) as 'total_sale_amount'
+                (SELECT SUM(order_detail.product_price) FROM offline_commerce_v1_2013.order_detail WHERE order_detail.product_id = mm.product_id) as 'total_sales_amount'
                 {$extra_select}
 
 		FROM offline_commerce_v1_2013.product
