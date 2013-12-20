@@ -164,7 +164,7 @@ class Product_Controller extends _Controller {
         $viewer_user_id = !empty($request_params['viewer_user_id']) ? $request_params['viewer_user_id'] : NULL;
 
 
-		$data = $this->Product->get_products_in_category($params, $id_shop, $id_lang, $viewer_user_id);
+		$data = $this->Product->get_products_in_category($params, $id_shop, $id_lang, $viewer_user_id, $params);
 
 		return static::wrap_result(true, $data);
 	}

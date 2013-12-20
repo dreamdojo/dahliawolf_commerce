@@ -391,7 +391,7 @@ class Product extends _Model {
 
     }
 
-	public function get_products_in_category($params, $id_shop, $id_lang, $viewer_user_id=null)
+	public function get_products_in_category($params, $id_shop, $id_lang, $viewer_user_id=null, $request_params)
     {
 
         $extra_join = '';
@@ -474,10 +474,21 @@ class Product extends _Model {
             ";
 
 
-        $sql .= '
-			ORDER BY category_product.position ASC
+        /*
+                //$request_params['sort'] = str_replace('  ', ' ', $request_params['sort']);
+        $valid_sorts = array("total_shares", "total_views", "price");
+        list($sort,$order) = explode('-', $request_params['sort']);
+        if ( in_array($sort, $valid_sorts) ) {
+            $sort_str =  stripos( $order, 'ASC' ) > -1? "$sort ASC" : "$sort DESC";
+
+           $sql .= " ORDER BY  product.$sort_str \n" ;
+        }else{
+
+            $sql .= '
+                ORDER BY category_product.position ASC
 		';
 
+        */
 
         $sql .= "\n {$inner_offset_limit}";
 
