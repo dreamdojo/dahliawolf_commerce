@@ -560,7 +560,7 @@ class Orders_Controller extends _Controller {
 
 
         $customer_service = array(
-            'Justin Mavandi' => "justin@offlinela.com",
+            'Justin Mavandi' => "justin@dahliawolf.com",
             'Javier Dorado' => "javier@offlinela.com",
             'Geoff Abbott' => "geoff@offlinela.com",
             'Silvana Lee' => "silvana@offlineinc.com",

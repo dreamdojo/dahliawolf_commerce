@@ -70,7 +70,13 @@ class Email_Template_Helper {
 		$htmlEmail = getEmailBody('email-template', 'html', $templateVariables);
 		$textEmail = getEmailBody('email-template', 'text', $templateVariables);
 		
-		$emailResults = email($from, $fromEmail, $to, $toEmail, $subject, $htmlEmail, $textEmail, $ccEmail, $bccEmail, $replyToEmail, $attachments);
+		//$emailResults = email($from, $fromEmail, $to, $toEmail, $subject, $htmlEmail, $textEmail, $ccEmail, $bccEmail, $replyToEmail, $attachments);
+
+
+        $mandril = new Mandrill_Email();
+        //////////////////////////send($from, $fromEmail, $to, $toEmail, $subject,  $htmlBody,  $plainBody = '', $send_at)
+        $emailResults = $mandril->send($from, $fromEmail, $to, $toEmail, $subject , $htmlEmail, '',  null);
+
 		
 		return $emailResults;
 	}
