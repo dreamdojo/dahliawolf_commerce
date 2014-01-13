@@ -72,10 +72,9 @@ class Email_Template_Helper {
 		
 		//$emailResults = email($from, $fromEmail, $to, $toEmail, $subject, $htmlEmail, $textEmail, $ccEmail, $bccEmail, $replyToEmail, $attachments);
 
-
         $mandril = new Mandrill_Email();
         //////////////////////////send($from, $fromEmail, $to, $toEmail, $subject,  $htmlBody,  $plainBody = '', $send_at)
-        $emailResults = $mandril->send($from, $fromEmail, $to, $toEmail, $subject , $htmlEmail, '',  null);
+        $emailResults = $mandril->send($from, $fromEmail, $to, $toEmail, $subject , $htmlEmail, $textEmail,  null);
 
 		
 		return $emailResults;
