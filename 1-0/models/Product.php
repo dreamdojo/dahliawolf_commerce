@@ -267,10 +267,17 @@ class Product extends _Model {
         }
 
 
-        $filter_status = isset($request_params['filter_status']) ? (int) $request_params['filter_status'] : 1;
-		if ($filter_status == 1) {
-			$sql .= "   AND product.status IN ('live', 'pre order', 'sold out') \n" ;
-		}
+        $valid_status_filters = array('live', 'pre order', 'sold out');
+        $filter_status = @strtolower($request_params['filter_status']);
+		if (in_array($filter_status, $valid_status_filters)) {
+			$sql .= "   AND product.status IN ('{$filter_status}') \n" ;
+		}else{
+            //by default grab these statuses, or ignore them if filter_status=0
+            $filter_status = isset($request_params['filter_status']) ? (int) $request_params['filter_status'] : 1;
+            if ($filter_status == 1) {
+                $sql .= "   AND product.status IN ('live', 'pre order', 'sold out') \n" ;
+            }
+        }
 
 		//product.status != :not_status AND
 		if (!empty($user_id)) {
