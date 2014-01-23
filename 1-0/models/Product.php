@@ -276,7 +276,7 @@ class Product extends _Model {
             //by default grab these statuses, or ignore them if filter_status=0
             $filter_status = isset($request_params['filter_status']) ? (int) $request_params['filter_status'] : 1;
             if ($filter_status == 1) {
-                $sql .= "   AND product.status IN ('live', 'pre order', 'sold out') \n" ;
+                $sql .= "   AND product.status IN ('live', 'sold out') \n" ;
             }
         }
 
