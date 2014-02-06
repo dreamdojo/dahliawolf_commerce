@@ -61,6 +61,19 @@ class Product_Controller extends _Controller {
             $data['tags'] = $this->Product->get_product_tags($data['product']['id_product'], $id_shop, $id_lang);
             $data['comments'] = $this->Product->get_product_comments($data['product']['id_product'], $id_shop, $id_lang);
             $data['files'] = $this->Product->get_product_files($data['product']['id_product'], $id_shop, $id_lang);
+
+
+            //add sponsors
+            /*
+            1-10 40%    stage #5
+            11-20 30%   stage #3
+            21-30 20%   stage #4
+            31-40 10%   stage #2
+
+            regular/    stage #1
+            sale price  stage #1
+            */
+
         }
 
 

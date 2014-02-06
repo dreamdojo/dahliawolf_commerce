@@ -69,14 +69,18 @@ try {
         header( sprintf("Content-Type: application/%s", $response_format));
 		$result = $controller->process_request($request);
 
+
+        // JSONP
+		if ($response_format == 'jsonp') {
+            !empty($request['callback'] )? $callback = $request['callback'] : $callback = "?";
+			echo "$callback(" . json_encode($result) . ")";
+		}
+
 		// JSON
 		if ($response_format == 'json') {
 			echo json_pretty($result);
 		}
-		// JSONP
-		else if ($response_format == 'jsonp') {
-			echo '?(' . json_pretty($result) . ')';
-		}
+
 
 		die();
 	}
