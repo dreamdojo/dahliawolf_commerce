@@ -107,6 +107,7 @@ class Orders_Controller extends _Controller {
 
 		$cc_payment = false;
 		$paypal_payment = false;
+        $stripe_payment = false;
 		if (!empty($validate_params['payment_info']) && !empty($validate_params['payment_info']['payment_method_id'])) {
 			// Payment method
 			$pm = $this->Payment_Method->get_row(
@@ -126,6 +127,9 @@ class Orders_Controller extends _Controller {
 			else if ($pm['name'] == 'PayPal') {
 				$paypal_payment = true;
 			}
+            else if ($pm['name'] == 'Stripe') {
+                $stripe_payment = true;
+            }
 		}
 
 		if ($cc_payment) { // CC validations
@@ -343,6 +347,10 @@ class Orders_Controller extends _Controller {
 				$is_authorization = false;
 			}
 		}
+        else if($stripe_payment) {
+            $is_authorization = true;
+            $payment_success = true;
+        }
 
 		$payment_success = true;
 		if (!$payment_success) {
