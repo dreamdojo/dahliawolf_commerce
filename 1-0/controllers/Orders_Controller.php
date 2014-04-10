@@ -755,6 +755,7 @@ class Orders_Controller extends _Controller {
 		$this->load('Order_Invoice');
 		$this->load('Order_Payment');
 		$this->load('Order_Detail');
+        $this->load('Product');
 		$this->load('Order_Detail_Tax');
 
 		// Validations
@@ -801,6 +802,10 @@ class Orders_Controller extends _Controller {
 				, 'id_shop' => $params['id_shop']
 			)
 		);
+
+        foreach($orders as $i=>$order) {
+            $orders[$i]['product_details'] = $this->Product->get_order_products($order['id_order'], $params['id_shop'], $params['id_lang']);
+        }
 
 		$data = $orders;
 
