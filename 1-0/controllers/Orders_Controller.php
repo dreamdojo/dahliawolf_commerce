@@ -1118,6 +1118,7 @@ class Orders_Controller extends _Controller {
 
 		$cc_payment = false;
 		$paypal_payment = false;
+        $stripe_payment = false;
 
 		$order = $this->Orders->get_row(
 			array('id_order' => $params['id_order'])
@@ -1164,6 +1165,9 @@ class Orders_Controller extends _Controller {
 			}
 			else if ($pm['name'] == 'PayPal') {
 				$paypal_payment = true;
+			}
+            else if ($pm['name'] == 'Stripe') {
+				$stripe_payment = true;
 			}
 		}
 
@@ -1219,7 +1223,9 @@ class Orders_Controller extends _Controller {
 			$transaction_id = NULL; // does not return a transaction for void
 			$data = $result_decoded['data']['void_paypal_payment']['data'];
 			$success = true;
-		}
+		} else if($stripe_payment) {
+            $success = true;
+        }
 
 		if ($success) {
 			$this->Orders->save(
