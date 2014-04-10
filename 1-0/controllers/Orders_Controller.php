@@ -348,6 +348,12 @@ class Orders_Controller extends _Controller {
 			}
 		}
         else if($stripe_payment) {
+            if (empty($cart['cart']['paypal_token'])) {
+                _Model::$Exception_Helper->request_failed_exception('Stripe token is not set.');
+            }
+
+            $authorization_transaction_id = $cart['cart']['paypal_token'];
+
             $is_authorization = true;
             $payment_success = true;
         }
