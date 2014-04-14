@@ -8,8 +8,7 @@ class Mandrill_Email {
 
     protected $global_merge_vars = null;
     protected $email_type = 'transactional';
-    //protected static $api_key = "5U1DlZOtZMM6LbKDdse-JA";
-    protected static $api_key = "Btwe8VxWFA9LToDcq6XbXQ";
+    protected static $api_key = "5U1DlZOtZMM6LbKDdse-JA";
 
 
     function setMergeVars($vars_arr)
@@ -36,11 +35,11 @@ class Mandrill_Email {
                 'html' => $htmlBody,
                 'text' => $plainBody,
                 'subject' => $subject,
-                'from_email' => 'admin@dahliawolf.com',
-                'from_name' => 'admin@dahliawolf.com',
+                'from_email' => $fromEmail,
+                'from_name' => $from,
                 'to' => array(
                     array(
-                        'email' => 'geoff@offlinela.com',
+                        'email' => $toEmail,
                         'name' => $to,
                         'type' => 'to'
                     )
@@ -65,7 +64,7 @@ class Mandrill_Email {
                 ),
                 'merge_vars' => array(
                     array(
-                        'rcpt' => 'geoff@offlinela.com',
+                        'rcpt' => $toEmail,
                         'vars' => array(
                             $this->global_merge_vars
                         )
