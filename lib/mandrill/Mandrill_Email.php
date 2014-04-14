@@ -36,10 +36,10 @@ class Mandrill_Email {
                 'text' => $plainBody,
                 'subject' => $subject,
                 'from_email' => $fromEmail,
-                'from_name' => $from,
+                'from_name' => 'admin@dahliawolf.com',
                 'to' => array(
                     array(
-                        'email' => $toEmail,
+                        'email' => 'geoff@offlinela.com',
                         'name' => $to,
                         'type' => 'to'
                     )
@@ -64,7 +64,7 @@ class Mandrill_Email {
                 ),
                 'merge_vars' => array(
                     array(
-                        'rcpt' => $toEmail,
+                        'rcpt' => 'geoff@offlinela.com',
                         'vars' => array(
                             $this->global_merge_vars
                         )
