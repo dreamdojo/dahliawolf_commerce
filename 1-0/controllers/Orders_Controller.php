@@ -577,7 +577,7 @@ class Orders_Controller extends _Controller {
             'Justin Mavandi' => "justin@dahliawolf.com",
             'Javier Dorado' => "javier@offlinela.com",
             'Geoff Abbott' => "geoff@offlinela.com",
-            'Silvana Lee' => "silvana@offlineinc.com",
+            'Silvana Lee' => "silvana@sugarlips.com",
         );
 
 		//Send email to staff
