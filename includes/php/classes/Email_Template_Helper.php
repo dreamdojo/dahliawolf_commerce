@@ -77,7 +77,7 @@ class Email_Template_Helper {
         $emailResults = $mandril->send($from, $fromEmail, $to, $toEmail, $subject , $htmlEmail, $textEmail,  null);
 
 		
-		return $toEmail;
+		return 'shiny';
 	}
 }
 
