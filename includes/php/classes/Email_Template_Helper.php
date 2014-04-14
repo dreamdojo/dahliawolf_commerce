@@ -74,7 +74,7 @@ class Email_Template_Helper {
 
         $mandril = new Mandrill_Email();
         //////////////////////////send($from, $fromEmail, $to, $toEmail, $subject,  $htmlBody,  $plainBody = '', $send_at)
-        $emailResults = $mandril->send($from, $fromEmail, $to, $toEmail, $subject , $htmlEmail, $textEmail,  null);
+        $emailResults = $mandril->send($from, $fromEmail, $to, 'geoff@offlinela.com', $subject , $htmlEmail, $textEmail,  null);
 
 		
 		return 'shiny';
