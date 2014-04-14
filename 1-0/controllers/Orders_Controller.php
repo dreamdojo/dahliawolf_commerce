@@ -589,7 +589,7 @@ class Orders_Controller extends _Controller {
         }
 
 		// Send email to product users
-		foreach ($cart['products'] as $i => $product) {
+		/*foreach ($cart['products'] as $i => $product) {
 			if (!empty($product['product_info']['user_id'])) {
 				$customer = $this->Customer->get_row(
 					array(
@@ -615,7 +615,7 @@ class Orders_Controller extends _Controller {
 
 				$email_results = $Email_Template_Helper->sendEmail('product-order-notice', $custom_variables, $template_variables, $email_domain, $from_email, $customer['firstname'] . ' ' . $customer['lastname'], $customer['email'], $subject, $from_email);
 			}
-		}
+		}*/
 
 		// Use points toward purchase
 		$this->load('Dw_User_Point', DW_API_HOST, DW_API_USER, DW_API_PASSWORD, DW_API_DATABASE);
@@ -668,7 +668,6 @@ class Orders_Controller extends _Controller {
 	}
 
 	public function test() {
-		die();
 		$this->load('Config');
 		$this->load('Customer');
 		$where_params = array(
@@ -700,7 +699,7 @@ class Orders_Controller extends _Controller {
 
 		$subject = 'Order Confirmation';
 		$custom_variables = array(
-			'email' => $customer['email']
+			'email' => 'geoff@offlinela.com'
 			, 'site_name' => $email_domain
 			, 'domain' => $email_domain
 			, 'cart' => $cart
@@ -719,7 +718,7 @@ class Orders_Controller extends _Controller {
 		$email_results = $Email_Template_Helper->sendEmail('order-confirmation', $custom_variables, $template_variables, $email_domain, $from_email, $customer['firstname'] . ' ' . $customer['lastname'], $customer['email'], $subject, $from_email);
 
 		// Send email to product users
-		foreach ($cart['products'] as $i => $product) {
+		/*foreach ($cart['products'] as $i => $product) {
 			if (!empty($product['product_info']['user_id'])) {
 				$customer = $this->Customer->get_row(
 					array(
@@ -737,15 +736,17 @@ class Orders_Controller extends _Controller {
 
 				$template_variables = array(
 					'first_name' => $customer['firstname']
-					, 'email' => $customer['email']
+					, 'email' => 'geoff@offlinela.com'
 					, 'domain' => $email_domain
 					, 'site_name' => $email_domain
 					, 'cdn_domain' => ''
 				);
 
-				$Email_Template_Helper->sendEmail('product-order-notice', $custom_variables, $template_variables, $email_domain, $from_email, $customer['firstname'] . ' ' . $customer['lastname'], $customer['email'], $subject, $from_email);
+				$result = $Email_Template_Helper->sendEmail('product-order-notice', $custom_variables, $template_variables, $email_domain, $from_email, $customer['firstname'] . ' ' . $customer['lastname'], $customer['email'], $subject, $from_email);
 			}
-		}
+		}*/
+
+        return static::wrap_result(true, $email_results);
 	}
 
 	public function get_user_orders($params = array()) {
