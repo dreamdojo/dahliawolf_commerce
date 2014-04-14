@@ -693,7 +693,7 @@ class Orders_Controller extends _Controller {
 
 
 
-		$email_domain = $_SERVER['HTTP_REFERER'];
+		$email_domain = 'admin@dahliawolf.com';
 		$order_email_prefix = $this->Config->get_value('Orders Email Prefix');
 		$from_email = $order_email_prefix . '@' . $email_domain;
 
