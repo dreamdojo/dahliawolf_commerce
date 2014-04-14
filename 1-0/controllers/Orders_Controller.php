@@ -671,7 +671,7 @@ class Orders_Controller extends _Controller {
 		$this->load('Config');
 		$this->load('Customer');
 		$where_params = array(
-			'user_id' => 669
+			'user_id' => 2418
 		);
 		$customer = $this->Customer->get_row($where_params);
 
@@ -680,7 +680,7 @@ class Orders_Controller extends _Controller {
 		$Cart_Controller = new Cart_Controller();
 		$cart_result = $Cart_Controller->get_cart_from_db(
 			array(
-				'user_id' => 669
+				'user_id' => 2418
 				, 'id_shop' => 3
 				, 'id_lang' => 1
 				, 'id_cart' => 100
