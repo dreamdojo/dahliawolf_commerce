@@ -8,7 +8,8 @@ class Mandrill_Email {
 
     protected $global_merge_vars = null;
     protected $email_type = 'transactional';
-    protected static $api_key = "5U1DlZOtZMM6LbKDdse-JA";
+    //protected static $api_key = "5U1DlZOtZMM6LbKDdse-JA";
+    protected static $api_key = "6QXN-K04hOILTJearjFmmw";
 
 
     function setMergeVars($vars_arr)
