@@ -35,7 +35,7 @@ class Mandrill_Email {
                 'html' => $htmlBody,
                 'text' => $plainBody,
                 'subject' => $subject,
-                'from_email' => $fromEmail,
+                'from_email' => 'admin@dahliawolf.com',
                 'from_name' => 'admin@dahliawolf.com',
                 'to' => array(
                     array(
