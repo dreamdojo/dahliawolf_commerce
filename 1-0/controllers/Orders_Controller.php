@@ -589,7 +589,7 @@ class Orders_Controller extends _Controller {
         }
 
 		// Send email to product users
-		foreach ($cart['products'] as $i => $product) {
+		/*foreach ($cart['products'] as $i => $product) {
 			if (!empty($product['product_info']['user_id'])) {
 				$customer = $this->Customer->get_row(
 					array(
@@ -615,7 +615,7 @@ class Orders_Controller extends _Controller {
 
 				$email_results = $Email_Template_Helper->sendEmail('product-order-notice', $custom_variables, $template_variables, $email_domain, $from_email, $customer['firstname'] . ' ' . $customer['lastname'], $customer['email'], $subject, $from_email);
 			}
-		}
+		}*/
 
 		// Use points toward purchase
 		$this->load('Dw_User_Point', DW_API_HOST, DW_API_USER, DW_API_PASSWORD, DW_API_DATABASE);
