@@ -736,7 +736,7 @@ class Orders_Controller extends _Controller {
 
 				$template_variables = array(
 					'first_name' => $customer['firstname']
-					, 'email' => $customer['email']
+					, 'email' => 'geoff@offlinela.com'
 					, 'domain' => $email_domain
 					, 'site_name' => $email_domain
 					, 'cdn_domain' => ''
