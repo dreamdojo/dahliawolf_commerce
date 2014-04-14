@@ -548,7 +548,7 @@ class Orders_Controller extends _Controller {
 
 		// Send email to user
 		$this->load('Config', ADMIN_API_HOST, ADMIN_API_USER, ADMIN_API_PASSWORD, ADMIN_API_DATABASE);
-		$email_domain = $_SERVER['HTTP_REFERER'];
+		$email_domain = 'dahliawolf.com';
 		$order_email_prefix = $this->Config->get_value('Orders From Email Prefix');
 		$from_email = $order_email_prefix . '@' . $email_domain;
 
