@@ -718,7 +718,7 @@ class Orders_Controller extends _Controller {
 		$email_results = $Email_Template_Helper->sendEmail('order-confirmation', $custom_variables, $template_variables, $email_domain, $from_email, $customer['firstname'] . ' ' . $customer['lastname'], $customer['email'], $subject, $from_email);
 
 		// Send email to product users
-		foreach ($cart['products'] as $i => $product) {
+		/*foreach ($cart['products'] as $i => $product) {
 			if (!empty($product['product_info']['user_id'])) {
 				$customer = $this->Customer->get_row(
 					array(
@@ -744,9 +744,9 @@ class Orders_Controller extends _Controller {
 
 				$result = $Email_Template_Helper->sendEmail('product-order-notice', $custom_variables, $template_variables, $email_domain, $from_email, $customer['firstname'] . ' ' . $customer['lastname'], $customer['email'], $subject, $from_email);
 			}
-		}
+		}*/
 
-        return static::wrap_result(true, $result);
+        return static::wrap_result(true, $email_results);
 	}
 
 	public function get_user_orders($params = array()) {
