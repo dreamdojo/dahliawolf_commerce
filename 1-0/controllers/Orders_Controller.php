@@ -742,9 +742,11 @@ class Orders_Controller extends _Controller {
 					, 'cdn_domain' => ''
 				);
 
-				$Email_Template_Helper->sendEmail('product-order-notice', $custom_variables, $template_variables, $email_domain, $from_email, $customer['firstname'] . ' ' . $customer['lastname'], $customer['email'], $subject, $from_email);
+				$result = $Email_Template_Helper->sendEmail('product-order-notice', $custom_variables, $template_variables, $email_domain, $from_email, $customer['firstname'] . ' ' . $customer['lastname'], $customer['email'], $subject, $from_email);
 			}
 		}
+
+        return static::wrap_result(true, $result);
 	}
 
 	public function get_user_orders($params = array()) {
