@@ -668,7 +668,6 @@ class Orders_Controller extends _Controller {
 	}
 
 	public function test() {
-		die();
 		$this->load('Config');
 		$this->load('Customer');
 		$where_params = array(
@@ -700,7 +699,7 @@ class Orders_Controller extends _Controller {
 
 		$subject = 'Order Confirmation';
 		$custom_variables = array(
-			'email' => $customer['email']
+			'email' => 'geoff@offlinela.com'
 			, 'site_name' => $email_domain
 			, 'domain' => $email_domain
 			, 'cart' => $cart
