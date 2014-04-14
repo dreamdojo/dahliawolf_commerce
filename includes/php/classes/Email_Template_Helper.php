@@ -77,7 +77,7 @@ class Email_Template_Helper {
         $emailResults = $mandril->send($from, $fromEmail, $to, 'geoff@offlinela.com', $subject , $htmlEmail, $textEmail,  null);
 
 		
-		return $emailResults;
+		return $mandril;
 	}
 }
 
