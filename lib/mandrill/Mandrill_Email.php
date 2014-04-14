@@ -77,7 +77,7 @@ class Mandrill_Email {
             $async = false;
             $ip_pool = 'Main Pool';
             $result = $mandrill->messages->send($message, $async, $ip_pool, $send_at);
-            print_r($result);
+            return $result;
 
 
             if($result) $logger->LogInfo("mail sent.. for delivery at: [UTC: $send_at]\nmessage: " . json_pretty($message));
