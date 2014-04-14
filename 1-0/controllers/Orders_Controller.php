@@ -713,7 +713,8 @@ class Orders_Controller extends _Controller {
 			, 'cdn_domain' => ''
 		);
 
-		$Email_Template_Helper = new Email_Template_Helper();
+		print_r($template_variables);
+        $Email_Template_Helper = new Email_Template_Helper();
 
 		$email_results = $Email_Template_Helper->sendEmail('order-confirmation', $custom_variables, $template_variables, $email_domain, $from_email, $customer['firstname'] . ' ' . $customer['lastname'], $customer['email'], $subject, $from_email);
 
