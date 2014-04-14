@@ -717,6 +717,7 @@ class Orders_Controller extends _Controller {
 
 		$email_results = $Email_Template_Helper->sendEmail('order-confirmation', $custom_variables, $template_variables, $email_domain, $from_email, $customer['firstname'] . ' ' . $customer['lastname'], $customer['email'], $subject, $from_email);
 
+		$email_results['poop'] = 'poop';
 		// Send email to product users
 		/*foreach ($cart['products'] as $i => $product) {
 			if (!empty($product['product_info']['user_id'])) {
