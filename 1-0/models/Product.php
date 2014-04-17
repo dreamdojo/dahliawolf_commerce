@@ -36,6 +36,10 @@ class Product extends _Model {
 			, tax_rules_group.name AS tax_rules_group
 			, product_lang.description, product_lang.description_short, product_lang.meta_description, product_lang.meta_keywords, product_lang.meta_title
 			, product_username.username AS username
+			, product_username.first_name AS first_name
+			, product_username.last_name AS last_name
+			, product_username.avatar AS avatar
+			, product_username.verified AS verified
 			, (SELECT product_file.product_file_id FROM offline_commerce_v1_2013.product_file WHERE product_file.product_id = product.id_product ORDER BY product_file.product_file_id ASC LIMIT 1) AS product_file_id
 			, IF(EXISTS(SELECT category_product.id_category_product FROM offline_commerce_v1_2013.category_product WHERE category_product.id_category = 1 AND category_product.id_product = product.id_product), 1, 0) AS is_new
 			, mm.posting_ids
