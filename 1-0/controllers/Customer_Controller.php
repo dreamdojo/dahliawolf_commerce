@@ -65,41 +65,6 @@ class Customer_Controller extends _Controller {
 		return static::wrap_result(true, $data);
 	}
 
-    public function test_customer($params = array()) {
-        $this->load('Customer');
-        $this->load('Store_Credit');
-
-        $validate_names = array(
-            'user_id' => NULL,
-            'amount' => NULL
-        );
-
-        $validate_params = array_merge($validate_names, $params);
-
-        // Validations
-        $input_validations = array(
-            'user_id' => array(
-                'label' => 'User Id'
-            , 'rules' => array(
-                    'is_set' => NULL
-                , 'is_int' => NULL
-                )
-            ),
-            'amount' => array(
-                'label' => 'User Id'
-            , 'rules' => array(
-                    'is_set' => NULL
-                , 'is_int' => NULL
-                )
-            )
-        );
-        $this->Validate->add_many($input_validations, $validate_params, true);
-        $this->Validate->run();
-
-        $data = $this->Store_Credit->add_user_credit($params['user_id'], $params['amount']);
-        return static::wrap_result(true, $data);
-    }
-
 	public function get_customer($params = array()) {
 		$this->load('Customer');
 		
