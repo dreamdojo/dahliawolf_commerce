@@ -30,5 +30,24 @@ class Store_Credit extends _Model {
 			self::$Exception_Helper->server_error_exception('Unable to get total user store credits.');
 		}
 	}
+
+    public function add_user_credit($user_id, $amount) {
+        $query = '
+			INSERT INTO store_credit (user_id, amount) VALUES (:user_id, :amount)
+		';
+
+        $values = array(
+            ':user_id' => $user_id,
+            ':amount' => $amount
+        );
+
+        try {
+            $total_credits = $this->query($query, $values);
+
+            return $total_credits;
+        } catch (Exception $e) {
+            self::$Exception_Helper->server_error_exception('Unable to get total user store credits.');
+        }
+    }
 }
 ?>
