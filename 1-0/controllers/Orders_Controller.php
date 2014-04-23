@@ -692,7 +692,7 @@ class Orders_Controller extends _Controller {
             $change_price = false;
 
             switch($order_count) {
-                case 11 :
+                case 10 :
                     $new_price = $og_price*.7;
                     $change_price = true;
                     break;
