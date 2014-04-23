@@ -350,6 +350,21 @@ class Product extends _Model {
 
     }
 
+    public function updateSalePrice($id, $new_price) {
+        if(isset($id) && isset($new_price) && $new_price > 0 && $id > 0) {
+            $query = "
+                UPDATE product
+                SET sale_price = ".$new_price."
+                WHERE id_product = ".$id."
+            ";
+
+            return self::$dbs[$this->db_host][$this->db_name]->exec($query);
+        } else {
+            return 'NOT SET';
+        }
+    }
+
+
     protected function addProductPostings(&$data, $id_shop, $id_lang)
     {
         if (!empty($data)) {

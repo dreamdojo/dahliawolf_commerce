@@ -589,6 +589,7 @@ class Orders_Controller extends _Controller {
         }
 
 		// Send email to product users
+        $product_id = false;
 		foreach ($cart['products'] as $i => $product) {
 			if (!empty($product['product_info']['user_id'])) {
 				$customer = $this->Customer->get_row(
@@ -596,6 +597,8 @@ class Orders_Controller extends _Controller {
 						'user_id' => $product['product_info']['user_id']
 					)
 				);
+
+                $product_id = $product['product_info']['id_product'];
 
 				$subject = 'Product Order Notification';
 				$custom_variables = array(
@@ -664,8 +667,52 @@ class Orders_Controller extends _Controller {
 			$this->Store_Credit->save($redeemed_store_credit_data);
 		}
 
+        if($product_id) {
+            $this->check_sales($product_id);
+        }
+
 		return static::wrap_result(true, $data);
 	}
+
+    private function check_sales($product_id) {
+        if(isset($product_id)) {
+            $this->load('Order_Detail');
+            $this->load('Product');
+
+            $orders = $this->Order_Detail->get_rows(
+                array(
+                    //'product_id' => $product_id
+                    'product_id' => $product_id
+                )
+            );
+
+            $order_count = count($orders);
+            $og_price = $orders[0]['original_product_price'];
+
+            $change_price = false;
+
+            switch($order_count) {
+                case 11 :
+                    $new_price = $og_price*.7;
+                    $change_price = true;
+                    break;
+                case 20 :
+                    $new_price = $og_price*.8;
+                    $change_price = true;
+                    break;
+                case 30 :
+                    $new_price = $og_price*.9;
+                    $change_price = true;
+                    break;
+            }
+
+            if($change_price) {
+                $retval = $this->Product->updateSalePrice($product_id, $og_price*.7);
+            }
+
+            return static::wrap_result(true, $retval);
+        }
+    }
 
 	public function test() {
 		$this->load('Config');
