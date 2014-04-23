@@ -449,7 +449,8 @@ class Orders_Controller extends _Controller {
 		$id_order_invoice = $this->Order_Invoice->save($order_invoice_data);
 
 		// Order products
-		if (!empty($cart['products'])) {
+		$product_id = false;
+        if (!empty($cart['products'])) {
 			foreach ($cart['products'] as $order_product) {
 				$product_price = ($order_product['product_info']['on_sale'] == '1') ? $order_product['product_info']['sale_price'] : $order_product['product_info']['price'];
 
@@ -484,6 +485,8 @@ class Orders_Controller extends _Controller {
 					, 'total_shipping_price_tax_excl' => 0
 					, 'original_product_price' => $order_product['product_info']['price']
 				);
+
+                $product_id = $order_product['id_product'];
 
 				$id_order_detail = $this->Order_Detail->save($order_detail_data);
 
@@ -589,7 +592,6 @@ class Orders_Controller extends _Controller {
         }
 
 		// Send email to product users
-        $product_id = false;
 		foreach ($cart['products'] as $i => $product) {
 			if (!empty($product['product_info']['user_id'])) {
 				$customer = $this->Customer->get_row(
@@ -597,8 +599,6 @@ class Orders_Controller extends _Controller {
 						'user_id' => $product['product_info']['user_id']
 					)
 				);
-
-                $product_id = $product['product_info']['id_product'];
 
 				$subject = 'Product Order Notification';
 				$custom_variables = array(
