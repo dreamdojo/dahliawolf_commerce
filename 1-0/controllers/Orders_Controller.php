@@ -645,6 +645,7 @@ class Orders_Controller extends _Controller {
 			, 'id_order' => $data['id_order']
 		);
 		$this->Dw_User_Point->save($user_point_data);
+        $this->logActivity($user_point_data['user_id'], 69, 'Bought an item', 'sale', $product_id);
 
 		// Deduct redeemed commissions
 		if (!empty($cart['cart_commission']) && !empty($cart['cart_commission']['amount'])) {
@@ -714,6 +715,23 @@ class Orders_Controller extends _Controller {
         }
     }
 
+    protected function logActivity($user_id, $activity_id, $note, $entity = NULL, $entity_id = NULL)
+    {
+        $activity_log = new Activity_Log();
+
+        $params = array(
+            'user_id' => $user_id,
+            'activity_id' => $activity_id,
+            'note' => $note,
+            'api_website_id' => 2,
+            'entity' => $entity,
+            'entity_id' => $entity_id,
+        );
+
+        return Activity_Log::saveActivity($params);
+
+    }
+
 	public function test() {
 		$this->load('Config');
 		$this->load('Customer');
@@ -722,77 +740,8 @@ class Orders_Controller extends _Controller {
 		);
 		$customer = $this->Customer->get_row($where_params);
 
+        return $this->logActivity($customer['user_id'], 69, 'Bought an item', 'sale', 70);
 
-		// Get cart
-		$Cart_Controller = new Cart_Controller();
-		$cart_result = $Cart_Controller->get_cart_from_db(
-			array(
-				'user_id' => 2418
-				, 'id_shop' => 3
-				, 'id_lang' => 1
-				, 'id_cart' => 100
-				, 'shipping_address_id' => 8
-				, 'id_delivery' => 2
-				, 'error_on_invalid_carrier' => true
-			)
-		);
-		$cart = $cart_result['data'];
-
-
-
-		$email_domain = 'dahliawolf.com';
-		$order_email_prefix = $this->Config->get_value('Orders Email Prefix');
-		$from_email = $order_email_prefix . '@' . $email_domain;
-
-		$subject = 'Order Confirmation';
-		$custom_variables = array(
-			'email' => $customer['email']
-			, 'site_name' => $email_domain
-			, 'domain' => $email_domain
-			, 'cart' => $cart
-		);
-
-		$template_variables = array(
-			'first_name' => $customer['firstname']
-			, 'email' => 'geoff@offlinela.com'
-			, 'domain' => $email_domain
-			, 'site_name' => $email_domain
-			, 'cdn_domain' => ''
-		);
-
-		print_r($template_variables);
-        $Email_Template_Helper = new Email_Template_Helper();
-
-		$email_results = $Email_Template_Helper->sendEmail('order-confirmation', $custom_variables, $template_variables, $email_domain, $from_email, $customer['firstname'] . ' ' . $customer['lastname'], $customer['email'], $subject, $from_email);
-
-		// Send email to product users
-		foreach ($cart['products'] as $i => $product) {
-			if (!empty($product['product_info']['user_id'])) {
-				$customer = $this->Customer->get_row(
-					array(
-						'user_id' => $product['product_info']['user_id']
-					)
-				);
-
-				$subject = 'Product Order Notification';
-				$custom_variables = array(
-					'email' => $customer['email']
-					, 'site_name' => $email_domain
-					, 'domain' => $email_domain
-					, 'product_name' => $product['product_info']['product_lang_name']
-				);
-
-				$template_variables = array(
-					'first_name' => $customer['firstname']
-					, 'email' => $customer['email']
-					, 'domain' => $email_domain
-					, 'site_name' => $email_domain
-					, 'cdn_domain' => ''
-				);
-
-				$Email_Template_Helper->sendEmail('product-order-notice', $custom_variables, $template_variables, $email_domain, $from_email, $customer['firstname'] . ' ' . $customer['lastname'], $customer['email'], $subject, $from_email);
-			}
-		}
 	}
 
 	public function get_user_orders($params = array()) {
