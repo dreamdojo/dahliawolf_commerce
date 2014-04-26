@@ -648,7 +648,7 @@ class Orders_Controller extends _Controller {
 		);
 		$this->Dw_User_Point->save($user_point_data);
         if(isset($product_id) && isset($product_name))
-            $this->logActivity($product_user, 69, 'purchased your '.$product_name, 'sale', $product_id);
+            $this->logActivity($product_user, 69, 'purchased your '.$product_name, 'sale', $user_point_data['user_id']);
 
 		// Deduct redeemed commissions
 		if (!empty($cart['cart_commission']) && !empty($cart['cart_commission']['amount'])) {
