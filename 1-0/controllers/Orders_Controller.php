@@ -550,7 +550,7 @@ class Orders_Controller extends _Controller {
 				}
 			}
 		}
-        $this->Orders->add_customer($order_product['product_info']['user_id'], $params['user_id']);
+        $this->Orders->add_customer($order_product['product_info']['user_id'], $params['user_id'], $product_id);
         //$this->Orders->add_customer(666, 666);
 
 		// Send email to user

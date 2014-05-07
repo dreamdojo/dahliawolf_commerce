@@ -57,16 +57,17 @@ class Orders extends _Model {
 		, 'payment_status'
 	);
 
-    public function add_customer($user, $cust) {
+    public function add_customer($user, $cust, $pid) {
         if(isset($user) && isset($cust)) {
             $query = "
-                INSERT INTO dahliawolf_v1_2013.customers (user_id, customer_id)
-                VALUES (:userId, :custId)
+                INSERT INTO dahliawolf_v1_2013.customers (user_id, customer_id, id_product)
+                VALUES (:userId, :custId, :pid)
             ";
 
             $values = array(
                 ':userId' => $user,
-                ':custId' => $cust
+                ':custId' => $cust,
+                ':pid' => $pid
             );
 
             try {
