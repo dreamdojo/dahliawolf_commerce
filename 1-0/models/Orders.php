@@ -78,28 +78,6 @@ class Orders extends _Model {
 			self::$Exception_Helper->server_error_exception('Unable to get order payment details.');
 		}
 	}
-
-    public function add_customer($user, $cust) {
-        if(isset($user) && isset($cust)) {
-            $query = "
-                INSERT INTO dahliawolf_v1_2013.customers (user_id, customer_id)
-                VALUES (:userId, :custId)
-            ";
-
-            $values = array(
-                ':userId' => $user,
-                ':custId' => $cust
-            );
-
-            try {
-                $data = self::$dbs[$this->db_host][$this->db_name]->exec($query, $values);
-
-                return $data;
-            } catch (Exception $e) {
-                self::$Exception_Helper->server_error_exception('Unable to get order details.');
-            }
-        }
-    }
 	
 	public function get_user_order_shipping_method($id_order, $user_id) {
 		$query = '
@@ -142,6 +120,28 @@ class Orders extends _Model {
 		}
 	}*/
 
+    public function add_customer($user, $cust) {
+        if(isset($user) && isset($cust)) {
+            $query = "
+                INSERT INTO dahliawolf_v1_2013.customers (user_id, customer_id)
+                VALUES (:userId, :custId)
+            ";
+
+            $values = array(
+                ':userId' => $user,
+                ':custId' => $cust
+            );
+
+            try {
+                $data = self::$dbs[$this->db_host][$this->db_name]->exec($query, $values);
+
+                return $data;
+            } catch (Exception $e) {
+                self::$Exception_Helper->server_error_exception('Unable to get order details.');
+            }
+        }
+    }
+
 	public function get_order_details($id_order) {
 		$query = '
 			SELECT orders.*
@@ -173,6 +173,8 @@ class Orders extends _Model {
 			self::$Exception_Helper->server_error_exception('Unable to get order details.');
 		}
 	}
+
+
 	
 	public function get_return_shipment_info($id_order, $user_id) {
 		$query = '
