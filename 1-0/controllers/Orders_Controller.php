@@ -550,6 +550,7 @@ class Orders_Controller extends _Controller {
 				}
 			}
 		}
+        $this->Orders->add_customer($order_product['product_info']['user_id'], $params['user_id']);
 
 		// Send email to user
 		$this->load('Config', ADMIN_API_HOST, ADMIN_API_USER, ADMIN_API_PASSWORD, ADMIN_API_DATABASE);
@@ -746,6 +747,11 @@ class Orders_Controller extends _Controller {
         return $this->logActivity($customer['user_id'], 69, 'Bought an item', 'sale', 70);
 
 	}
+
+    public function add_customer() {
+        $this->load('Orders');
+        echo $this->Orders->add_customer(2418, 666);
+    }
 
 	public function get_user_orders($params = array()) {
 		$this->load('Customer');
