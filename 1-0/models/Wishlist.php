@@ -79,6 +79,30 @@ class Wishlist extends _Model {
 			self::$Exception_Helper->server_error_exception('Unable to delete row.');
 		}
 	}
+
+    public function get_wishlist_by_item($product_id) {
+        $sql = "
+            SELECT favorite_product.id_customer,
+            user_username.*
+            FROM offline_commerce_v1_2013.favorite_product
+            INNER JOIN dahliawolf_v1_2013.user_username ON user_username.user_id = favorite_product.id_customer
+            WHERE favorite_product.id_product = 69
+        ";
+
+        $params = array(
+        ':id_shop' => 3
+        , ':id_lang' => 1
+        , ':active' => '1'
+        , ':product_id' => $product_id
+        );
+
+        try {
+            $data = self::$dbs[$this->db_host][$this->db_name]->exec($sql, $params);
+            return $data;
+        } catch (Exception $e) {
+            self::$Exception_Helper->server_error_exception('Unable to get wishlist.');
+        }
+    }
 	
 	public function get_wishlist($id_shop, $id_lang, $id_customer) {
 		$sql = "

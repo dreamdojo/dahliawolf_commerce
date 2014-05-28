@@ -39,6 +39,14 @@ class Wishlist_Controller extends _Controller {
 		
 		return static::wrap_result(true, $data);
 	}
+
+    public function get_wishlist_by_item($params = array()) {
+        $this->load('Wishlist');
+        //Validate
+        $data = $this->Wishlist->get_wishlist_by_item($params['id_product']);
+
+        return static::wrap_result(true, $data);
+    }
 	
 	public function delete_from_wishlist($params = array()) {
 		$this->load('Wishlist');
