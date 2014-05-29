@@ -90,10 +90,7 @@ class Wishlist extends _Model {
         ";
 
         $params = array(
-        ':id_shop' => 3
-        , ':id_lang' => 1
-        , ':active' => '1'
-        , ':product_id' => $product_id
+            ':product_id' => $product_id
         );
 
         try {
