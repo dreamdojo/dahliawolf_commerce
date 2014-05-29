@@ -86,7 +86,7 @@ class Wishlist extends _Model {
             user_username.*
             FROM offline_commerce_v1_2013.favorite_product
             INNER JOIN dahliawolf_v1_2013.user_username ON user_username.user_id = favorite_product.id_customer
-            WHERE favorite_product.id_product = 69
+            WHERE favorite_product.id_product = :product_id
         ";
 
         $params = array(
