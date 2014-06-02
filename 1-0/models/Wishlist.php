@@ -80,18 +80,30 @@ class Wishlist extends _Model {
 		}
 	}
 
-    public function get_wishlist_by_item($product_id) {
-        $sql = "
-            SELECT favorite_product.id_customer,
-            user_username.*
-            FROM offline_commerce_v1_2013.favorite_product
-            INNER JOIN dahliawolf_v1_2013.user_username ON user_username.user_id = favorite_product.id_customer
-            WHERE favorite_product.id_product = :product_id
-        ";
+    public function get_wishlist_by_item($product_id, $vui) {
 
+        $viewer_user_id = null;
+        $select_str = 'SELECT favorite_product.id_customer, user_username.*';
+        $join_str = '';
         $params = array(
             ':product_id' => $product_id
         );
+
+        if (!empty($vui)) {
+            $select_str .= ', IF(follow.follow_id IS NULL, 0, 1) AS is_following';
+            $join_str .= '
+				LEFT JOIN dahliawolf_v1_2013.follow ON (favorite_product.id_customer = follow.user_id
+					AND follow.follower_user_id = '.$vui.')
+			';
+        }
+
+        $sql = "
+            {$select_str}
+            FROM offline_commerce_v1_2013.favorite_product
+            INNER JOIN dahliawolf_v1_2013.user_username ON user_username.user_id = favorite_product.id_customer
+            {$join_str}
+            WHERE favorite_product.id_product = :product_id
+        ";
 
         try {
             $data = self::$dbs[$this->db_host][$this->db_name]->exec($sql, $params);
