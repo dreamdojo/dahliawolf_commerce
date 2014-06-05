@@ -501,7 +501,7 @@ class Product extends _Model {
 
             ";
 
-
+        $sql .= "ORDER BY position ASC, product.id_product DESC \n";
         /*
                 //$request_params['sort'] = str_replace('  ', ' ', $request_params['sort']);
         $valid_sorts = array("total_shares", "total_views", "price");
