@@ -96,31 +96,23 @@ class Product_Controller extends _Controller {
 
 	}
 
-	public function get_products($request_params = array())
+    public function get_products($request_params = array())
     {
         $logger = new Jk_Logger(APP_PATH . 'logs/product.log');
         $logger->LogInfo("request params: " . var_export($request_params,true));
 
-		$this->load('Product');
+        $this->load('Product');
 
-		$validate_names = array(
-			'id_shop' => NULL,
-			'id_lang' => NULL,
-			'user_id' => NULL,
-		);
+        $validate_names = array(
+            'id_shop' => NULL,
+            'id_lang' => NULL,
+            'user_id' => NULL,
+        );
 
-		$validate_params = array_merge($validate_names, $request_params);
+        $validate_params = array_merge($validate_names, $request_params);
 
-		// Validations
-		$input_validations = array(
-		    /*
-			, 'user_id' => array(
-				'label' => 'User Id'
-				, 'rules' => array(
-					'is_int' => NULL
-				)
-			)*/
-		);
+        // Validations
+        $input_validations = array();
 
         $id_shop = $request_params['id_shop']? $request_params['id_shop'] : 3;
         $id_lang = $request_params['id_lang']? $request_params['id_lang'] : 1;
@@ -128,18 +120,13 @@ class Product_Controller extends _Controller {
         $request_params['filter_min_price'] = $request_params['filter_min_price']? floatval( $request_params['filter_min_price'] ): 0;
         $request_params['filter_max_price'] = $request_params['filter_max_price']? floatval( $request_params['filter_max_price'] ): 999999;
 
-        /*
-		$this->Validate->add_many($input_validations, $validate_params, true);
-		$this->Validate->run();
-        */
+        $user_id = !empty($request_params['user_id']) ? $request_params['user_id'] : NULL;
+        $viewer_user_id = !empty($request_params['viewer_user_id']) ? $request_params['viewer_user_id'] : NULL;
 
-		$user_id = !empty($request_params['user_id']) ? $request_params['user_id'] : NULL;
-		$viewer_user_id = !empty($request_params['viewer_user_id']) ? $request_params['viewer_user_id'] : NULL;
+        $data = $this->Product->get_products_fast($id_shop, $id_lang, $request_params, $user_id, $viewer_user_id);
 
-		$data = $this->Product->get_products($id_shop, $id_lang, $request_params, $user_id, $viewer_user_id);
-
-		return static::wrap_result(true, $data);
-	}
+        return static::wrap_result(true, $data);
+    }
 
 
 	public function get_category_products($params = array()) {
@@ -179,11 +166,10 @@ class Product_Controller extends _Controller {
         $viewer_user_id = !empty($request_params['viewer_user_id']) ? $request_params['viewer_user_id'] : NULL;
 
 
-		$data = $this->Product->get_products_in_category($params, $id_shop, $id_lang, $viewer_user_id, $params);
+		$data = $this->Product->get_products_in_category_fast($params, $id_shop, $id_lang, $viewer_user_id, $params);
 
 		return static::wrap_result(true, $data);
 	}
-
 
     public function get_user_comissions($params = array())
     {

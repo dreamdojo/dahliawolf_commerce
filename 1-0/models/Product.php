@@ -338,6 +338,105 @@ class Product extends _Model {
 		}
 	}
 
+    public function get_products_fast($id_shop=3, $id_lang=1, $request_params = array(),  $user_id = NULL, $viewer_user_id=null)
+    {
+        $logger = new Jk_Logger(APP_PATH . 'logs/product.log');
+
+        $logger->LogInfo("query params: " . var_export($request_params, true));
+
+        $where_sql = "";
+
+        $extra_join = '';
+        $extra_select = '';
+        $sql_params = Array();
+
+        // Search
+        if (!empty($request_params['q'])) {
+            $where_sql .= ' AND (product_lang.description LIKE :q OR product_lang.name LIKE :q)';
+            $values[':q'] = "%{$request_params['q']}%";
+        }
+
+        if(!empty($request_params['filter_min_price']))
+        {
+            $where_sql .=  "\n AND product.price >= {$request_params['filter_min_price']}";
+        }
+
+        if(!empty($request_params['filter_max_price']))
+        {
+            $where_sql .=  "\n AND product.price <= {$request_params['filter_max_price']}";
+        }
+
+        $user_q = "";
+        if (!empty($user_id)) {
+            $user_q = 'AND product.user_id = :user_id';
+            $sql_params[':user_id'] = $user_id;
+        }
+
+
+        $inner_offset_limit = $this->generateLimitOffset($request_params, true);
+
+
+        $sql = "
+            SELECT DISTINCT product.*, product_lang.name AS product_lang_name, product_lang.name AS product_name
+            , IF(product_shop.position IS NULL, 999999, product_shop.position) AS 'position'
+            , user_username.first_name, user_username.last_name, user_username.username
+            FROM product
+              INNER JOIN offline_commerce_v1_2013.product_shop ON product.id_product = product_shop.id_product
+              INNER JOIN offline_commerce_v1_2013.product_lang ON product.id_product = product_lang.id_product
+              LEFT JOIN dahliawolf_v1_2013.user_username ON user_username.user_id = product.user_id
+            WHERE (product.status IN ('live') OR product.status IN ('sold out') OR product.status IN ('pre order'))
+              AND id_shop_default = :id_shop
+              AND product.active = 1
+              {$user_q}
+            GROUP BY product.id_product
+            ORDER BY position ASC, product.id_product DESC
+            {$inner_offset_limit}
+        ";
+
+        $sql_params[':id_shop'] = $id_shop;
+
+
+        //$request_params['sort'] = str_replace('  ', ' ', $request_params['sort']);
+        /*$valid_sorts = array("total_shares", "total_views", "price");
+        list($sort,$order) = explode('-', $request_params['sort']);
+        if ( in_array($sort, $valid_sorts) ) {
+            $sort_str =  stripos( $order, 'ASC' ) > -1? "$sort ASC" : "$sort DESC";
+
+            $sql .= " ORDER BY  $sort_str \n" ;
+        }else{
+
+            $sql .= "
+                      ORDER BY position ASC, product.id_product DESC \n
+          		";
+        }*/
+
+
+        //$sql .= "\n {$inner_offset_limit}";
+
+        if ($viewer_user_id) {
+            //$sql_params[':viewer_user_id'] = $viewer_user_id;
+        }
+
+
+        if(isset($_GET['t'])) {
+            var_dump($sql);
+            //var_dump($sql_params);
+            var_dump($request_params);
+        }
+
+        try {
+            $data = self::$dbs[$this->db_host][$this->db_name]->exec($sql, $sql_params);
+
+            self::addProductPostings($data, $id_shop, $id_lang);
+            self::addProductImages($data, $id_shop, $id_lang);
+            //self::addProductSales($data, $id_shop, $id_lang);
+
+            return $data;
+        } catch (Exception $e) {
+            self::$Exception_Helper->server_error_exception('Unable to get products.');
+        }
+    }
+
 
     protected function addProductSales(&$data, $id_shop=3, $id_lang=1)
     {
@@ -419,6 +518,78 @@ class Product extends _Model {
 
     }
 
+    protected function addProductImagesFast(&$data, $id_shop, $id_lang)
+    {
+        foreach($data as &$prod_data )
+        {
+            $product_files = $this->get_product_files_fast($prod_data['id_product'], $id_shop, $id_lang );
+            $prod_data['product_images'] = $product_files;
+        }
+
+        return $data;
+
+    }
+
+    public function get_products_in_category_fast($params, $id_shop, $id_lang, $viewer_user_id=null, $request_params)
+    {
+        $inner_offset_limit = $this->generateLimitOffset($params, true);
+
+        $user_q = "";
+        if (!empty($user_id)) {
+            $user_q = 'AND product.user_id = :user_id';
+            $sql_params[':user_id'] = $request_params['user_id'];
+        }
+
+        $sql = "
+            SELECT DISTINCT category_product.id_product, product.*, product_lang.name AS product_lang_name, product_lang.name AS product_name
+            , IF(product_shop.position IS NULL, 999999, product_shop.position) AS 'position'
+            , user_username.first_name, user_username.last_name, user_username.username
+            FROM category_product
+              INNER JOIN product ON product.id_product = category_product.id_product
+              INNER JOIN offline_commerce_v1_2013.product_shop ON product.id_product = product_shop.id_product
+              INNER JOIN offline_commerce_v1_2013.product_lang ON product.id_product = product_lang.id_product
+              LEFT JOIN dahliawolf_v1_2013.user_username ON user_username.user_id = product.user_id
+            WHERE id_category = :id_category
+              AND (product.status IN ('live') OR product.status IN ('sold out') OR product.status IN ('pre order'))
+              AND id_shop_default = :id_shop
+              AND product.active = 1
+              {$user_q}
+            {$inner_offset_limit}
+        ";
+
+        $sql .= "ORDER BY position ASC, product.id_product DESC \n";
+
+        //$sql .= "\n {$inner_offset_limit}";
+
+
+        $values = array(
+            ':id_shop' 		=> 3,
+            ':id_category' 	=> $params['id_category'],
+            //':id_lang' 		=> $params['id_lang'] ? $params['id_lang'] : 1
+        );
+
+
+        if (!empty($params['user_id'])) {
+            //$values[':user_id'] = $params['user_id'];
+        }
+
+        if(isset($_GET['t']))
+        {
+            echo sprintf("values: %s\nsql: %s", var_export($values), $sql);
+        }
+
+
+        try {
+            $query_result = self::$dbs[$this->db_host][$this->db_name]->exec($sql, $values);
+            self::addProductImages($query_result, $id_shop, $id_lang);
+
+            if (empty($query_result)) return NULL;
+            return $query_result;
+        } catch (Exception $e) {
+            self::$Exception_Helper->server_error_exception('Could not get products in category');
+        }
+    }
+
 	public function get_products_in_category($params, $id_shop, $id_lang, $viewer_user_id=null, $request_params)
     {
 
@@ -460,8 +631,8 @@ class Product extends _Model {
                 IF(like_winner.like_winner_id IS NOT NULL, 1, 0) AS is_winner,
                 ##wishlist.wishlist_count,
                 CONCAT('http://content.dahliawolf.com/shop/product/inspirations/image.php?id_product=', product.id_product) AS inspiration_image_url,
-                (SELECT COUNT(*) FROM dahliawolf_v1_2013.product_share WHERE product_share.product_id = mm.product_id) as 'total_shares',
-                (SELECT COUNT(*) FROM dahliawolf_v1_2013.product_view WHERE product_view.product_id = mm.product_id) as 'total_views',
+                /*(SELECT COUNT(*) FROM dahliawolf_v1_2013.product_share WHERE product_share.product_id = mm.product_id) as 'total_shares',
+                (SELECT COUNT(*) FROM dahliawolf_v1_2013.product_view WHERE product_view.product_id = mm.product_id) as 'total_views',*/
                 (SELECT COUNT(*) FROM offline_commerce_v1_2013.order_detail WHERE order_detail.product_id = mm.product_id) as 'total_sales'
 
 
@@ -502,21 +673,6 @@ class Product extends _Model {
             ";
 
         $sql .= "ORDER BY position ASC, product.id_product DESC \n";
-        /*
-                //$request_params['sort'] = str_replace('  ', ' ', $request_params['sort']);
-        $valid_sorts = array("total_shares", "total_views", "price");
-        list($sort,$order) = explode('-', $request_params['sort']);
-        if ( in_array($sort, $valid_sorts) ) {
-            $sort_str =  stripos( $order, 'ASC' ) > -1? "$sort ASC" : "$sort DESC";
-
-           $sql .= " ORDER BY  product.$sort_str \n" ;
-        }else{
-
-            $sql .= '
-                ORDER BY category_product.position ASC
-		';
-
-        */
 
         $sql .= "\n {$inner_offset_limit}";
 
@@ -773,6 +929,30 @@ class Product extends _Model {
 			self::$Exception_Helper->server_error_exception('Unable to get product files.' . $e->getMessage());
 		}
 	}
+
+    public function get_product_files_fast($id_product, $id_shop, $id_lang) {
+        $sql = "
+		    SELECT product_file.*, product.id_product
+		    FROM product_file
+		    INNER JOIN product ON product.id_product = :id_product
+		    WHERE product_file.id_product = :id_product
+		    ORDER BY product_file.product_file_id ASC
+		";
+
+        $params = array(
+            ':id_product' => $id_product,
+            //':id_shop' => $id_shop,
+            //':id_lang' => $id_lang,
+        );
+
+        try {
+            $data = self::$dbs[$this->db_host][$this->db_name]->exec($sql, $params);
+
+            return $data;
+        } catch (Exception $e) {
+            self::$Exception_Helper->server_error_exception('Unable to get product files.' . $e->getMessage());
+        }
+    }
 
 	public function get_order_products($id_order, $id_shop, $id_lang) {
 		$sql = "
