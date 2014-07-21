@@ -60,7 +60,7 @@ class Customer_Controller extends _Controller {
 		}
 		
 		$data['id_customer'] = $this->Customer->save($customer);
-        //$data = $this->Store_Credit->add_user_credit($params['user_id'], 10); //This adds store credit on sign up
+        $data = $this->Store_Credit->add_user_credit($params['user_id'], 10); //This adds store credit on sign up
 		
 		return static::wrap_result(true, $data);
 	}
