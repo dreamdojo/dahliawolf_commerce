@@ -45,5 +45,26 @@ class Commission_Controller extends _Controller {
 
 		return static::wrap_result(true, $total_commissions);
 	}
+
+    public function convert_to_store_credit($params = array()) {
+        $this->load('Commission');
+
+        // Validations
+        $input_validations = array(
+            'user_id' => array(
+                'label' => 'User ID'
+            , 'rules' => array(
+                    'is_set' => NULL
+                , 'is_int' => NULL
+                )
+            )
+        );
+        $this->Validate->add_many($input_validations, $params, true);
+        $this->Validate->run();
+
+        $result = $this->Commission->convertToStoreCredit($params['user_id']);
+
+        return static::wrap_result(true, $result);
+    }
 }
 ?>

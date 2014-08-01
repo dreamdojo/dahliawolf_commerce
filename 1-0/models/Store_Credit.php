@@ -11,6 +11,10 @@ class Store_Credit extends _Model {
 		, 'note'
 	);
 
+    public function subtract($params = array()) {
+
+    }
+
 	public function get_user_total($user_id) {
 		$query = '
 			SELECT IFNULL(SUM(store_credit.amount), 0) AS total_credits

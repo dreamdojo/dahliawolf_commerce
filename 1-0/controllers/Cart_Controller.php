@@ -1371,7 +1371,12 @@ class Cart_Controller extends _Controller {
 			$id_cart = $this->Cart->save($cart_data);
 		}
 		else {
-			if (!empty($cart['discounts'])) {
+            $discount_amount =  $cart['cart']['totals']['products'] - ($cart['cart']['totals']['products'] * (1 - ($new_discount['reduction_percent']/100)));
+            if($discount_amount > $cart['cart']['totals']['grand_total']) {
+                _Model::$Exception_Helper->request_failed_exception('Discount amount exceeds total.');
+            }
+
+            if (!empty($cart['discounts'])) {
 				foreach ($cart['discounts'] as $i => $discount) {
 					if ($discount['id_cart_rule'] == $new_discount['id_cart_rule']) {
 						$found_discount = true;

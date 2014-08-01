@@ -13,6 +13,46 @@ class Commission extends _Model {
 		, 'note'
 	);
 
+    private function subtract($params = array()) {
+        $values = array(
+            ':user_id'=>$params['user_id'],
+            ':amount'=>$params['amount'],
+            ':note'=>$params['note']
+        );
+
+        $q = "INSERT INTO commission (user_id, amount, note) VALUES (:user_id, :amount, :note)";
+
+        try {
+            $ret = $this->query($q, $values);
+
+            return $ret;
+        } catch (Exception $e) {
+            self::$Exception_Helper->server_error_exception('Unable to get total user commissions.');
+        }
+    }
+
+    private function addStoreCredit($params = array()) {
+        $values = array(
+            ':user_id'=>$params['user_id'],
+            ':amount'=>$params['amount'],
+            ':note'=>$params['note']
+        );
+
+        $q = "INSERT INTO store_credit (user_id, amount, note) VALUES (:user_id, :amount, :note)";
+
+        try {
+            $ret = $this->query($q, $values);
+
+            return $ret;
+        } catch (Exception $e) {
+            self::$Exception_Helper->server_error_exception('Unable to get total user commissions.');
+        }
+    }
+
+    private function add($params = array()) {
+
+    }
+
 	public function get_user_total($user_id) {
 		$query = '
 			SELECT IFNULL(SUM(commission.commission), 0) AS total_commissions
@@ -32,5 +72,12 @@ class Commission extends _Model {
 			self::$Exception_Helper->server_error_exception('Unable to get total user commissions.');
 		}
 	}
+
+    public function convertToStoreCredit($user_id) {
+        $commissions = $this->get_user_total($user_id)['total_commissions'];
+        $this->subtract(array('user_id'=>$user_id, 'amount'=>'-'.$commissions, 'note'=>'Transfer commission to Store Credit'));
+        $this->addStoreCredit(array('user_id'=>$user_id, 'amount'=>$commissions, 'note'=>'Transfer commission to Store Credit'));
+
+    }
 }
 ?>
