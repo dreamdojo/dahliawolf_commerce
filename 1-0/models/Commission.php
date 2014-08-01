@@ -20,21 +20,21 @@ class Commission extends _Model {
             ':note'=>$params['note']
         );
 
-        $q = "INSERT INTO commission (user_id, amount, note) VALUES (:user_id, :amount, :note)";
+        $q = "INSERT INTO commission (user_id, commission, note) VALUES (:user_id, :amount, :note)";
 
         try {
             $ret = $this->query($q, $values);
 
             return $ret;
         } catch (Exception $e) {
-            self::$Exception_Helper->server_error_exception('Unable to get total user commissions.');
+            self::$Exception_Helper->server_error_exception('Unable to subtract user commissions.');
         }
     }
 
     private function addStoreCredit($params = array()) {
         $values = array(
             ':user_id'=>$params['user_id'],
-            ':amount'=>$params['amount'],
+            ':amount'=>floatval($params['amount'])*1.1,
             ':note'=>$params['note']
         );
 
@@ -45,7 +45,7 @@ class Commission extends _Model {
 
             return $ret;
         } catch (Exception $e) {
-            self::$Exception_Helper->server_error_exception('Unable to get total user commissions.');
+            self::$Exception_Helper->server_error_exception('Unable to add user commissions.');
         }
     }
 
@@ -75,8 +75,13 @@ class Commission extends _Model {
 
     public function convertToStoreCredit($user_id) {
         $commissions = $this->get_user_total($user_id)['total_commissions'];
-        $this->subtract(array('user_id'=>$user_id, 'amount'=>'-'.$commissions, 'note'=>'Transfer commission to Store Credit'));
-        $this->addStoreCredit(array('user_id'=>$user_id, 'amount'=>$commissions, 'note'=>'Transfer commission to Store Credit'));
+        if(floatval($commissions)) {
+            $this->subtract(array('user_id'=>$user_id, 'amount'=>'-'.$commissions, 'note'=>'Transfer commission to Store Credit'));
+            $this->addStoreCredit(array('user_id'=>$user_id, 'amount'=>$commissions, 'note'=>'Transfer commission to Store Credit'));
+            return array('data'=>$commissions.' converted successfully');
+        } else {
+            _Model::$Exception_Helper->request_failed_exception('No commission available');
+        }
 
     }
 }
