@@ -77,7 +77,7 @@ class Commission extends _Model {
         $commissions = $this->get_user_total($user_id)['total_commissions'];
         if(floatval($commissions)) {
             $this->subtract(array('user_id'=>$user_id, 'amount'=>'-'.$commissions, 'note'=>'Transfer commission to Store Credit'));
-            $this->addStoreCredit(array('user_id'=>$user_id, 'amount'=>$commissions, 'note'=>'Transfer commission to Store Credit'));
+            $this->addStoreCredit(array('user_id'=>$user_id, 'amount'=>$commissions, 'note'=>'Store Credit received from commission exchange'));
             return array('data'=>$commissions.' converted successfully');
         } else {
             _Model::$Exception_Helper->request_failed_exception('No commission available');
