@@ -24,7 +24,7 @@ class MailChimp_Helper
     }
 
 
-    public static function addSubscriber($user_obj, $list_id = "800b6e2485")
+    public static function addSubscriber($user_obj, $list_id = "b959642488")
     {
         /*$user_obj = (object) $user_obj;
 
