@@ -26,7 +26,7 @@ class MailChimp_Helper
 
     public static function addSubscriber($user_obj, $list_id = "800b6e2485")
     {
-        $user_obj = (object) $user_obj;
+        /*$user_obj = (object) $user_obj;
 
         $mailchimp = new MailChimp( self::$api_key );
         $result = $mailchimp->call('lists/subscribe', array(
@@ -41,7 +41,7 @@ class MailChimp_Helper
 
         self::trace( "mailchimp result, addSubscriber(): " . json_pretty($result) );
 
-        return  $result;
+        return  $result;*/
     }
 
     public static function getLists()
