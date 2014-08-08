@@ -6,22 +6,19 @@ class Category extends _Model {
 	
 	public function getShopCategories($params) {
 		$query = '
-			SELECT category.id_category, category_lang.name, category_lang.description, category_lang.link_rewrite, category_shop.position
+			SELECT category.id_category, category_lang.name, category_lang.description, category_lang.link_rewrite
 			FROM category
-				INNER JOIN category_shop ON category.id_category = category_shop.id_category
 				INNER JOIN category_lang ON category.id_category = category_lang.id_category
-			WHERE category_shop.id_shop = :id_shop
-				AND category_lang.id_lang = :id_lang
+			WHERE category_lang.id_lang = :id_lang
 				AND category.active = :active';
 				
 		if (!empty($params['id_category'])) {
 			$query .= ' AND category.id_category = :id_category';
 		}
 		
-		$query .= ' ORDER BY category_shop.position ASC';
+		//$query .= ' ORDER BY category_shop.position ASC';
 		$values = array(
-			':id_shop' => $params['id_shop']
-			, ':id_lang' => $params['id_lang']
+			':id_lang' => $params['id_lang']
 			, ':active' => '1'
 		);
 		
