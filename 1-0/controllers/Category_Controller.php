@@ -84,6 +84,64 @@ class Category_Controller extends _Controller {
 		$data = $this->Product->get_number_of_products_in_category($params['biz_site_id']);
 		return static::wrap_result(true, $data);
 	}
+
+    public function empty_category($params = array()) {
+        if($params['secret'] != 'bigblopper') { //little helper
+            echo 'YOU FAILED THE TEST'.$params['sercet'];
+        }
+        $category = new Category();
+
+        $input_validations = array(
+            'id_category' => array(
+                'label' => 'Category ID'
+            , 'rules' => array(
+                    'is_int' => NULL
+                )
+            )
+        );
+
+        $this->Validate->add_many($input_validations, $params, true);
+        $this->Validate->run();
+
+        $data = array();
+
+        return static::wrap_result(true, $data);
+    }
+
+    public function update_category_position($params = array()) {
+        $category = new Category();
+
+        $input_validations = array(
+            'id_category' => array(
+                'label' => 'Category ID'
+            , 'rules' => array(
+                    'is_set' => NULL,
+                    'is_int' => NULL
+                )
+            ),
+            'id_product' => array(
+                'label' => 'Category ID'
+            , 'rules' => array(
+                    'is_set' => NULL,
+                    'is_int' => NULL
+                )
+            ),
+            'position' => array(
+                'label' => 'Category ID'
+            , 'rules' => array(
+                    'is_set' => NULL,
+                    'is_int' => NULL
+                )
+            )
+        );
+
+        $this->Validate->add_many($input_validations, $params, true);
+        $this->Validate->run();
+
+        $data = $category->updateCategory($params);
+
+        return static::wrap_result(true, $data);
+    }
 }
 
 ?>

@@ -91,6 +91,26 @@ class Category extends _Model {
         }
 
     }
+    public function updateCategory($params=array()) {
+        $values = array(
+            ':idCat'=>$params['id_category'],
+            ':idProd'=>$params['id_product'],
+            ':pos'=>$params['position']
+        );
 
+        $q = "
+            UPDATE category_product
+            SET category_product.position = :pos
+            WHERE category_product.id_product = :idProd AND category_product.id_category = :idCat
+        ";
+
+        try {
+            $query_result = self::$dbs[$this->db_host][$this->db_name]->exec($q, $values);
+            if (empty($query_result)) return NULL;
+            return $query_result;
+        } catch (Exception $e) {
+            self::$Exception_Helper->server_error_exception('Could not update categories');
+        }
+    }
 
 }

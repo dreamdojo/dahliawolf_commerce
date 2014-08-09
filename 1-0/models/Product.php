@@ -541,12 +541,10 @@ class Product extends _Model {
         }
 
         $sql = "
-            SELECT DISTINCT category_product.id_product, product.*, product_lang.name AS product_lang_name, product_lang.name AS product_name
-            , IF(product_shop.position IS NULL, 999999, product_shop.position) AS 'position'
+            SELECT DISTINCT category_product.id_product, product.*, product_lang.name AS product_lang_name, product_lang.name AS product_name, category_product.position
             , user_username.first_name, user_username.last_name, user_username.username
             FROM category_product
               INNER JOIN product ON product.id_product = category_product.id_product
-              INNER JOIN offline_commerce_v1_2013.product_shop ON product.id_product = product_shop.id_product
               INNER JOIN offline_commerce_v1_2013.product_lang ON product.id_product = product_lang.id_product
               LEFT JOIN dahliawolf_v1_2013.user_username ON user_username.user_id = product.user_id
             WHERE id_category = :id_category
@@ -616,12 +614,12 @@ class Product extends _Model {
 			    product_lang.meta_keywords,
 			    product_lang.meta_title,
 			    product_lang.link_rewrite,
-			    category_product.position,
+			    category_product.position AS 'position',
 			    customer.username,
 			    (SELECT product_file.product_file_id FROM product_file WHERE product_file.product_id = product.id_product ORDER BY product_file.product_file_id ASC LIMIT 1) AS product_file_id,
 			    IF(EXISTS(SELECT category_product.id_category_product FROM category_product WHERE category_product.id_category = 1 AND category_product.id_product = product.id_product), 1, 0) AS is_new,
 
-                IF(product_shop.position IS NULL, 999999, product_shop.position) AS 'position',
+                /*IF(product_shop.position IS NULL, 999999, product_shop.position) AS 'position',*/
                 product_lang.description, product_lang.description_short, product_lang.meta_description, product_lang.meta_keywords, product_lang.meta_title,
                 (SELECT product_file.product_file_id FROM offline_commerce_v1_2013.product_file WHERE product_file.product_id = product.id_product ORDER BY product_file.product_file_id ASC LIMIT 1) AS product_file_id,
                 IF(EXISTS(SELECT category_product.id_category_product FROM offline_commerce_v1_2013.category_product WHERE category_product.id_category = 1 AND category_product.id_product = product.id_product), 1, 0) AS is_new,
